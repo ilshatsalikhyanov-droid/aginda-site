@@ -164,7 +164,7 @@ function menu(auto=false){
     page.append(mk('scene-img',`<img src="pictures/main-menu.jpg" alt="" style="object-position:center 30%" onerror="this.parentNode.remove()">`));
     page.append(mk('body',`<h1>АГИНДА</h1><div class="text">
       <p>Материк Агинды омывают моря. Единственное известное людям поселение — город за двумя кольцами высоких стен.</p>
-      <p>Во внутреннем круге — тайна, во внешнем — нищета и труд, а за стенами хозяйничают твари. Лишь искатели выходят туда за добычей. Твой путь начинается сегодня.</p></div>`));
+      <p>Во внутреннем круге — тайна, во внешнем — нищета и труд, а за стенами хозяйничают твари. Чаще других туда выходят искатели — за добычей. Твой путь начинается сегодня.</p></div>`));
     if(v){
       const c=btn('Продолжить','','primary');
       c.onclick=()=>{try{S=JSON.parse(v);go(S.scene||'guild_hall');}catch(e){store.clear();menu();}};
@@ -290,6 +290,9 @@ function go(id,msg=[]){
   if(log.length)body.append(mk('log',log.map(l=>`<div>${l}</div>`).join('')));
   page.append(body);
   let rowEl=null;   // кнопки с row:true идут в один ряд (например, стороны света)
+  const lowHp=S.hp<maxHp(S)*0.3;   // здоровья меньше 30% — предупреждаем перед боем
+  const isFightTo=to=>{const t=SCENES[to];return !!t&&(!!t.combat||/_fight$/.test(to));};
+  if(lowHp&&(sc.choices||[]).some(ch=>(!ch.if||ch.if(S))&&isFightTo(ch.to)))body.append(mk('log',`<div>⚠ Здоровья мало (${S.hp}/${maxHp(S)}). Бой сейчас может кончиться плохо: лучше отдохнуть или выпить зелье.</div>`));
   (sc.choices||[]).forEach(ch=>{
     if(ch.if&&!ch.if(S))return;
     const poor=ch.cost?.gold&&coins(S)<ch.cost.gold;
@@ -298,7 +301,7 @@ function go(id,msg=[]){
       const out=ch.give?gain(S,ch.give):[];
       if(ch.msg)out.unshift(ch.msg);
       go(ch.to,out);
-    },'',poor?'Не хватает монет':ch.soon?'Скоро':ch.sub||'');
+    },'',poor?'Не хватает монет':ch.soon?'Скоро':ch.sub||(lowHp&&isFightTo(ch.to)?'Мало здоровья':''));
     if(poor||ch.soon)b.disabled=true;
     if(ch.dim)b.classList.add('dimmed');
     if(ch.hint){b.title=ch.hint;b.setAttribute('aria-label',ch.hint);}
@@ -319,7 +322,7 @@ const fmtNum=n=>String(Math.round(n*10)/10);
 function tipItem(it,slotLabel){
   const lines=Object.entries(it.bonus||{}).filter(([,v])=>v).map(([k,v])=>`<div><span>${STAT_LABEL[k]}</span><b class="${v>0?'pos':'neg'}">${v>0?'+':''}${v}${k==='crit'||k==='dodge'?'%':''}</b></div>`).join('');
   const cap=it.capture?it.capture.base.map(r=>`<div><span>Шанс поимки (${r.from}–${r.to} ур.)</span><b>${r.chance}%</b></div>`).join(''):'';
-  const ck=it.cook?`<div class="ts">Рецепт блюда · ${it.cook.tier}</div>`+Object.entries(it.cook.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс</span><b>${it.cook.chance}%</b></div><div><span>Готовит</span><b>${ITEMS[it.cook.result].name}</b></div>`:'';
+  const ck=it.cook?`<div class="ts">Рецепт блюда</div>`+Object.entries(it.cook.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс</span><b>${it.cook.chance}%</b></div><div><span>Готовит</span><b>${ITEMS[it.cook.result].name}</b></div>`:'';
   const fd=it.food?`<div><span>Урон, защита, крит, уклонение</span><b class="pos">+${it.food.pct}%</b></div><div><span>Действует</span><b>${it.food.min} мин</b></div>`:'';
   const rec=it.recipe?`<div class="ts">Рецепт · ${it.recipe.tier}</div>`+Object.entries(it.recipe.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс создания</span><b>${it.recipe.chance}%</b></div><div><span>Создаёт</span><b>${ITEMS[it.recipe.result].name}</b></div>`:'';
   const big=it.img?`<img class="tipimg" src="${it.img}" alt="">`:'';   // в подсказке картинка крупнее, чем в списках
@@ -493,7 +496,7 @@ function questTasks(s){
     {k:'cloak',t:'Создать «Некачественный крысиный плащ» в лавке ремесленника.',short:'Создать крысиный плащ',d:!!f.cloak_made||(s.inv.cloak_rat_poor||0)>0,show:hasRecipe,par:true},
     {k:'lvl3',t:'Достичь 3-го уровня.',short:'Достичь 3-го уровня',d:s.lvl>=3,show:!!f.gear},
     {k:'m3',t:'Вернуться к мастеру-наставнику (3-й уровень).',short:'Вернуться к наставнику',d:!!f.m3,show:s.lvl>=3&&!!f.gear},
-    {k:'knight',t:'Подойти к Рыцарю внутреннего двора в Гильдии искателей.',short:'Подойти к рыцарю',d:!!f.knight_met,show:!!f.m3},
+    {k:'knight',t:'Подойти к Рыцарю внутреннего двора в Гильдии искателей.',short:'Подойти к Рыцарю',d:!!f.knight_met,show:!!f.m3},
   ].filter(x=>x.show!==false);
 }
 // Ежедневные задания (отдельная вкладка журнала). st: avail — можно взять, taken — взято, won — выполнено, осталось сдать, failed, done
@@ -501,11 +504,11 @@ function dailyTasks(s){
   const out=[],f=s.flags;
   if(f.m3){
     const st=escortView(s),map={
-      none:{t:'Ежедневное: сопроводить разведывательный отряд за стену. Задание выдаёт Рыцарь внутреннего двора в Гильдии искателей (раз в день).',short:'Взять у рыцаря: сопровождение',mark:'○'},
+      none:{t:'Ежедневное: сопроводить разведывательный отряд за стену. Задание выдаёт Рыцарь внутреннего двора в Гильдии искателей (раз в день).',short:'Взять у Рыцаря: сопровождение',mark:'○'},
       taken:{t:'Сопроводить разведывательный отряд за стену. Отряд ждёт в Кривом переулке. Если проиграть или сбежать, задание провалено.',short:'Сопроводить отряд',mark:'●',active:true},
       fight:{t:'Сопроводить разведывательный отряд: идёт бой.',short:'Сопроводить отряд',mark:'●',active:true},
-      won:{t:'Отнести молочный зуб тролля-болотника рыцарю внутреннего двора в Гильдии искателей.',short:'Сдать зуб рыцарю',mark:'●',active:true},
-      failed:{t:'Сопроводить разведывательный отряд: задание провалено. Новое можно взять завтра у рыцаря.',short:'Задание провалено',mark:'✗',done:true},
+      won:{t:'Отнести молочный зуб тролля-болотника Рыцарю внутреннего двора в Гильдии искателей.',short:'Сдать зуб Рыцарю',mark:'●',active:true},
+      failed:{t:'Сопроводить разведывательный отряд: задание провалено. Новое можно взять завтра у Рыцаря.',short:'Задание провалено',mark:'✗',done:true},
       done:{t:'Сопроводить разведывательный отряд: выполнено. Новое можно взять завтра.',short:'Выполнено',mark:'✓',done:true},
     };
     out.push({...map[st],st,k:'escort'});
@@ -544,7 +547,7 @@ function journalScreen(back){
     if(!d.length)$screen.append(el('<p class="dim">Ежедневных заданий пока нет. Они появятся после наставления мастера на 3-м уровне.</p>'));
     d.forEach(x=>$screen.append(taskRow(x,x.done?'done':x.active?'cur':'next',x.mark,back)));
     const done=S.escortDone||0,nx=SLAYER_STAGES.find(st=>!S.flags[st.flag]);
-    if(S.flags.m3)$screen.append(el(`<p class="dim" style="font-size:13px">Сдано заданий сопровождения: ${done}.${nx?` До «${ITEMS[nx.item].name}» осталось: ${Math.max(0,nx.need-done)}.`:''}</p>`));
+    if(S.flags.m3)$screen.append(el(`<p class="dim" style="font-size:13px">Сдано заданий сопровождения: ${done}.${nx?` До следующей ступени ожерелья — ещё ${Math.max(0,nx.need-done)}.`:''}</p>`));
     $screen.append(el('<p class="dim" style="font-size:13px">Обновляются каждый день в полночь по Москве.</p>'));
   }else{
     const tasks=questTasks(S).slice().reverse();   // новые задания сверху
@@ -614,7 +617,7 @@ function petSlotScreen(back){
 }
 // Титулы: список с условиями, выбор активного титула (он показывается в окне «Персонаж»)
 // Прогресс к закрытому титулу (для подсказки)
-const titleProgress=id=>id==='catcher'?` (${S.captures||0}/30)`:id==='ratslayer'?` (${RAT_KINDS.map(k=>Math.min(10,(S.kills||{})[k]||0)).join(' / ')} из 10)`:'';
+const titleProgress=id=>id==='catcher'?` (${S.captures||0}/30)`:id==='ratslayer'?` (${RAT_KINDS.map(k=>Math.min(10,(S.kills||{})[k]||0)).join(' / ')} из 10, по порядку: детёныши, Матки, короли)`:'';
 function titlesScreen(back){
   $screen.innerHTML='';$screen.append(el('<h2>Титулы</h2>'));
   $screen.append(el('<p class="dim" style="font-size:13px">Бонусы дают все полученные титулы. Выбранный показывается в профиле и чате.</p>'));
@@ -653,7 +656,7 @@ function characterScreen(back){
       ${statRow('Удача',bareStat(S,'luck')+plusTxt(eqSum(S,'luck')))}
       ${statRow('Победы/пораж.',(S.wins||0)+' / '+(S.losses||0))}
       ${buffLeftMin()?statRow('Еда',`<span class="pos">+${S.buff.pct}%</span> <i class="dim">(${buffLeftMin()} мин)</i>`):''}
-      ${statRow('Ловец',trapper(S).lvl+' <i class="dim">('+Math.floor(trapper(S).prog/trapNeed(trapper(S).lvl)*100)+'%)</i>')}`);
+      ${statRow('Ловец монстров',trapper(S).lvl+' <i class="dim">('+Math.floor(trapper(S).prog/trapNeed(trapper(S).lvl)*100)+'%)</i>')}`);
   page.append(mk('char-wrap'));page.lastChild.append(left,stats);
   // ювелирка
   const jr=mk('jrow');
@@ -736,11 +739,11 @@ function cookScreen(sc,note=''){
   if(note)body.append(mk('log',note));
   page.append(body);
   const act=mk('actions'),ids=Object.keys(S.inv).filter(id=>ITEMS[id]?.cook&&S.inv[id]>0);
-  if(!ids.length)act.append(mk('dim','Рецептов блюд нет. Их можно купить у хозяина харчевни.'));
+  if(!ids.length)act.append(mk('dim','Рецептов блюд нет. Их продают тут же, у стойки.'));
   ids.forEach(id=>{
     const r=ITEMS[id].cook,res=ITEMS[r.result],can=craftable(S,r);
     const mats=Object.entries(r.ingredients).map(([k,n])=>{const have=S.inv[k]||0;return `${ITEMS[k].name}: <span class="${have>=n?'pos':'neg'}">${have}/${n}</span>`;}).join(' · ');
-    const b=btn(`${iic(res)} ${res.name} ×${S.inv[id]}`,()=>cookRecipe(id).then(n=>cookScreen(sc,n)),can?'primary':'dimmed',`Шанс ${r.chance}% · ${mats}`);
+    const b=btn(`${iic(res)} ${res.name} · рецептов: ${S.inv[id]}`,()=>cookRecipe(id).then(n=>cookScreen(sc,n)),can?'primary':'dimmed',`Шанс ${r.chance}% · ${mats}`);
     if(!can)b.disabled=true;
     act.append(attachTip(b,tipItem(res,'')));
   });
@@ -763,7 +766,7 @@ const buffLeftMin=()=>S.buff&&S.buff.until>Date.now()?Math.ceil((S.buff.until-Da
 // Дом ловцов: продажа питомцев. Питомец в клети (слот) в списке не показывается; отданного на воскрешение продать нельзя; погибший — за полцены.
 function petSellScreen(sc,note=''){
   hud();$screen.innerHTML='';
-  const page=mk('page'),body=mk('body','<h2>Продать питомца</h2><div class="text"><p>Инструктор окидывает клети взглядом: — Лишних заберу. Дохлых тоже, но за полцены.</p></div>');
+  const page=mk('page'),body=mk('body','<h2>Продать питомца</h2><div class="text"><p>Инструктор окидывает клети взглядом: — Лишних пристрою в хорошие руки. И павших возьму, но за полцены.</p></div>');
   if(note)body.append(mk('log',note));
   page.append(body);
   const act=mk('actions');
@@ -1147,7 +1150,7 @@ function showWin(res){
     head='Зверь в клети';text=`${e.name} заперт${f?'а':nt?'о':''} в клети. Теперь ${f?'она':nt?'оно':'он'} ваш питомец.`;
   }else{
     const what=items.length?items.map(id=>ITEMS[id].name).join('; '):'Ничего';
-    text=C.mode==='escort'?`Путь расчищен, отряд проходит дальше. Среди добычи вы находите: ${what}. Задание выполнено: молочный зуб — доказательство, отнесите его рыцарю в Гильдию.`:`${e.name} бездыханно лежит у ваших ног. Осмотрев труп и окрестности, вы находите: ${what}.`;
+    text=C.mode==='escort'?`Путь расчищен, отряд проходит дальше. Среди добычи вы находите: ${what}. Отнесите молочный зуб Рыцарю в Гильдию.`:`${e.name} бездыханно лежит у ваших ног. Осмотрев труп и окрестности, вы ${items.length?`находите: ${what}`:'ничего не находите'}.`;
   }
   const xpLines=res.xpLines;
   // общее окно дропа: монеты, предметы (подсказка с назначением при наведении), опыт
