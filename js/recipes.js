@@ -9,8 +9,8 @@
 const RECIPES = {
   recipe_rat_bread: {
     name:'Рецепт: Крысиный хлеб', icon:'📜', img:'pictures/equipment/simple-recipe.jpg',
-    desc:'Простой рецепт блюда. Срабатывает в 90% случаев, одноразовый.',
-    cook:{ tier:'простой', chance:90, ingredients:{ flour:2 }, result:'rat_bread' }, price:30, stack:true,
+    desc:'Рецепт блюда: в одном случае из десяти всё подгорает. Одноразовый.',
+    cook:{ tier:'блюдо', chance:90, ingredients:{ flour:2 }, result:'rat_bread' }, price:30, stack:true,
   },
   recipe_rat_king_belt: {
     name:'Рецепт: Пояс из хвостов крысиного короля', icon:'📜', img:'pictures/equipment/simple-recipe.jpg',

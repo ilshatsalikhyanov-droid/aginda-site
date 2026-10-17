@@ -15,7 +15,8 @@ function makeRng(seed) {
 }
 const rngInt = (R, a, b) => a + Math.floor(R() * (b - a + 1));
 const rngPick = (R, arr) => arr[Math.floor(R() * arr.length)];
-const low = (s) => s.toLowerCase();
+// В середине фразы имя с маленькой буквы; имена собственные («Крысиная Матка») не трогаем
+const low = (s) => (/\s[А-ЯЁ]/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));
 const plural = (n, a, b, c) => { const m = n % 100, d = n % 10; return m > 10 && m < 20 ? c : d === 1 ? a : d > 1 && d < 5 ? b : c; };
 
 // Значок предмета для текста (диалоги, лог, шапка): картинка, если есть, иначе эмодзи. Общий для игры и сервера (награды сцен).
