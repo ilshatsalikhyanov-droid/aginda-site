@@ -149,7 +149,7 @@ const SET_ITEMS = [];   // [id, цена покупки | 0 (крафт), сло
                 sword_weapon:'zubchaty-sword', sword_offhand:'zubchaty-buckler', sword_chest:'zubchaty-chest', sword_helmet:'zubchaty-helmet',
                 sword_gloves:'zubchaty-gloves', sword_pants:'zubchaty-pants', sword_boots:'zubchaty-boots',
                 tamer_weapon:'lovchiy-hook', tamer_offhand:'lovchiy-lure', tamer_chest:'lovchiy-vest', tamer_helmet:'lovchiy-hood',
-                tamer_pants:'lovchiy-pants' };
+                tamer_gloves:'lovchiy-gloves', tamer_pants:'lovchiy-pants' };
   Object.keys(defs).forEach((path) => {
     const [set, items] = defs[path];
     Object.keys(items).forEach((slot) => {
