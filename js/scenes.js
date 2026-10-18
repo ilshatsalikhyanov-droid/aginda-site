@@ -288,6 +288,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
 
   quarter: {
     place:'Деловой квартал',
+    image:'pictures/locations/business-quarter.jpg',
     title:'Деловой квартал',
     text:`Здесь внешний круг делает вид, что у него есть деньги. Писари за мутными окнами строчат расписки, ростовщики пересчитывают чужие долги, а торговцы спорят так громко, будто продают золото, а не лежалый товар. Все спешат, и никто никого не замечает.`,
     choices:[
@@ -296,6 +297,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     ]},
   tavern: {
     place:'Харчевня «Последний ужин»',
+    image:'pictures/locations/tavern.jpg',
     title:'Харчевня «Последний ужин»',
     text:`Низкий зал, закопчённые балки, длинные столы, исцарапанные ножами. За стойкой хозяин мешает варево в огромном котле. На заднем дворе скрипит жёрнов: здесь мелют всё, что может превратиться в муку.`,
     choices:[
@@ -303,8 +305,8 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
       {t:'Приготовить', to:'tavern_cook'},
       {t:'Выйти в квартал', to:'quarter'},
     ]},
-  tavern_buy: { place:'Харчевня «Последний ужин»', shop:true, stock:['rat_bread','recipe_rat_bread'], back:'tavern' },
-  tavern_cook: { place:'Харчевня «Последний ужин»', cook:true, back:'tavern' },
+  tavern_buy: { image:'pictures/locations/tavern.jpg', zoom:{x:0.66, y:0.38, scale:2.0}, place:'Харчевня «Последний ужин»', shop:true, stock:['rat_bread','recipe_rat_bread'], back:'tavern' },
+  tavern_cook: { image:'pictures/locations/tavern.jpg', zoom:{x:0.66, y:0.38, scale:2.0}, place:'Харчевня «Последний ужин»', cook:true, back:'tavern' },
 
   alley: {
     place:'Кривой переулок',
