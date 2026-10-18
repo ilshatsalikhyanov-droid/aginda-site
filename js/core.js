@@ -20,7 +20,7 @@ const low = (s) => (/\s[А-ЯЁ]/.test(s) ? s : s.charAt(0).toLowerCase() + s.sl
 const plural = (n, a, b, c) => { const m = n % 100, d = n % 10; return m > 10 && m < 20 ? c : d === 1 ? a : d > 1 && d < 5 ? b : c; };
 
 // Значок предмета для текста (диалоги, лог, шапка): картинка, если есть, иначе эмодзи. Общий для игры и сервера (награды сцен).
-const iconHtml = (it) => (it.img ? `<img class="iic" src="${it.img}" alt="">` : it.icon);
+const iconHtml = (it) => (it.img ? `<img class="iic" src="${pic(it.img)}" alt="">` : it.icon);
 const coinIcon = () => iconHtml(ITEMS.bronze_coin);
 // ---- Монеты: бронза → серебро → золото по 100 к 1; coins() — всё в бронзе, цены в бронзе ----
 const coins = (s) => (s.inv.bronze_coin || 0) + 100 * (s.inv.silver_coin || 0) + 10000 * (s.inv.gold_coin || 0);

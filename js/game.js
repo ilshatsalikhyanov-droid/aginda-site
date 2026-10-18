@@ -161,7 +161,7 @@ function menu(auto=false){
     if(auto&&v){try{S=JSON.parse(v);return go(S.scene||'guild_hall');}catch(e){S=null;store.clear();v=null;}}
     $screen.innerHTML='';
     const page=mk('page'),act=mk('actions');
-    page.append(mk('scene-img',`<img src="pictures/main-menu.jpg" alt="" style="object-position:center 30%" onerror="this.parentNode.remove()">`));
+    page.append(mk('scene-img',`<img src="${pic('pictures/main-menu.jpg')}" alt="" style="object-position:center 30%" onerror="this.parentNode.remove()">`));
     page.append(mk('body',`<h1>АГИНДА</h1><div class="text">
       <p>Материк Агинды омывают моря. Единственное известное людям поселение — город за двумя кольцами высоких стен.</p>
       <p>Во внутреннем круге — тайна, во внешнем — нищета и труд, а за стенами хозяйничают твари. Чаще других туда выходят искатели — за добычей. Твой путь начинается сегодня.</p></div>`));
@@ -285,7 +285,7 @@ function go(id,msg=[]){
   const txt=typeof sc.text==='function'?sc.text(S):sc.text;
   $screen.innerHTML='';
   const page=mk('page'),act=mk('actions');
-  if(sc.image)page.append(mk('scene-img',`<img src="${sc.image}" alt="${sc.title||''}"${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
+  if(sc.image)page.append(mk('scene-img',`<img src="${pic(sc.image)}" alt="${sc.title||''}"${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
   const body=mk('body',`<div class="text">${txt.split('\n\n').map(p=>`<p>${p}</p>`).join('')}</div>`);
   if(log.length)body.append(mk('log',log.map(l=>`<div>${l}</div>`).join('')));
   page.append(body);
@@ -325,7 +325,7 @@ function tipItem(it,slotLabel){
   const ck=it.cook?`<div class="ts">Рецепт блюда</div>`+Object.entries(it.cook.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс</span><b>${it.cook.chance}%</b></div><div><span>Готовит</span><b>${ITEMS[it.cook.result].name}</b></div>`:'';
   const fd=it.food?`<div><span>Урон, защита, крит, уклонение</span><b class="pos">+${it.food.pct}%</b></div><div><span>Действует</span><b>${it.food.min} мин</b></div>`:'';
   const rec=it.recipe?`<div class="ts">Рецепт · ${it.recipe.tier}</div>`+Object.entries(it.recipe.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс создания</span><b>${it.recipe.chance}%</b></div><div><span>Создаёт</span><b>${ITEMS[it.recipe.result].name}</b></div>`:'';
-  const big=it.img?`<img class="tipimg" src="${it.img}" alt="">`:'';   // в подсказке картинка крупнее, чем в списках
+  const big=it.img?`<img class="tipimg" src="${pic(it.img)}" alt="">`:'';   // в подсказке картинка крупнее, чем в списках
   return `${big}<div class="tn">${it.img?'':iic(it)+' '}${it.name}${it.junk?' <span class="tag">хлам</span>':''}${it.material?' <span class="tag">материал</span>':''}</div>
     ${slotLabel?`<div class="ts">${slotLabel}</div>`:''}${it.cook?ck:it.food?fd:it.recipe?rec:(lines||(it.use?`<div><span>Лечит</span><b class="pos">${it.use.healPct}% здоровья</b></div>`:cap||it.material||it.junk||it.currency?'':'<div class="ts">Без бонусов</div>'))}${cap}
     ${it.minLvl?`<div><span>Уровень</span><b>${it.minLvl}</b></div>`:''}${it.sell?`<div><span>Цена продажи</span><b>${it.sell} ${coinIcon()}</b></div>`:''}${it.desc?`<div class="ts">${it.desc}</div>`:''}`;
@@ -452,7 +452,7 @@ async function craftRecipe(id){
 function craftScreen(sc,note=''){
   hud();$screen.innerHTML='';
   const page=mk('page'),body=mk('body','<h2>Создать</h2>');
-  if(sc.image)page.append(mk('scene-img',`<img src="${sc.image}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
+  if(sc.image)page.append(mk('scene-img',`<img src="${pic(sc.image)}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
   if(note)body.append(mk('log',note));
   page.append(body);
   const act=mk('actions'),ids=Object.keys(S.inv).filter(id=>ITEMS[id]?.recipe&&S.inv[id]>0);
@@ -588,7 +588,7 @@ const statRow=(k,v)=>`<div><span>${k}</span><b>${v}</b></div>`;
 function slotButton(key,back,st=S){   // st — чей это герой (по умолчанию наш); у чужого слоты только для просмотра
   const id=st.equip[key],it=id&&ITEMS[id];
   const b=document.createElement('button');b.className='slot'+(it?' on':'');
-  b.innerHTML=it?(it.img?`<img class="iic simg" src="${it.img}" alt="">`:`<span class="ic">${it.icon}</span>`):`<span class="sl">${key==='cage'?'Клеть':SLOTS[key]}</span>`;
+  b.innerHTML=it?(it.img?`<img class="iic simg" src="${pic(it.img)}" alt="">`:`<span class="ic">${it.icon}</span>`):`<span class="sl">${key==='cage'?'Клеть':SLOTS[key]}</span>`;
   b.setAttribute('aria-label',SLOTS[key]+(it?': '+it.name:''));
   if(st===S)b.onclick=()=>slotScreen(key,back);
   if(!it)return b;
@@ -635,7 +635,7 @@ function characterScreen(back){
   page.append(mk('body',`<div class="h2row"><h2>${S.name}</h2><button type="button" class="ttl" aria-label="Титулы">${ttl||'Титулы'} ▾</button></div>`));
   page.querySelector('.ttl').onclick=()=>titlesScreen(back);
   const heroImg=S.gender==='m'?'pictures/hero-male.png':S.gender==='f'?'pictures/hero-female.png':null;
-  const paper=mk('paper',`<div class="fig${heroImg?' img':''}">${heroImg?`<img src="${heroImg}" alt="">`:portraitSVG(S.gender)}</div>`);
+  const paper=mk('paper',`<div class="fig${heroImg?' img':''}">${heroImg?`<img src="${pic(heroImg)}" alt="">`:portraitSVG(S.gender)}</div>`);
   Object.entries(SLOT_POS).forEach(([k,p])=>{
     const b=slotButton(k,back);b.style[p.side==='l'?'left':'right']='0';b.style.top=p.y+'%';paper.append(b);
   });
@@ -818,7 +818,7 @@ function sellScreen(sc,note=''){
 function shopScreen(sc){
   const draw=(note='')=>{
     $screen.innerHTML='';hud();
-    if(sc.image)$screen.append(mk('scene-img',`<img src="${sc.image}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
+    if(sc.image)$screen.append(mk('scene-img',`<img src="${pic(sc.image)}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
     if(sc.text)$screen.append(el(`<div class="text"><p>${sc.text}</p></div>`));
     if(note)$screen.append(el(`<div class="log">${note}</div>`));
     sc.stock.forEach(id=>{
@@ -969,7 +969,7 @@ function profileScreen(p,onBack){
   const view={equip:p.equip||{}},page=mk('page charpage');
   const h=mk('body');h.append(Object.assign(document.createElement('h2'),{textContent:p.nick}));page.append(h);
   const heroImg=p.gender==='m'?'pictures/hero-male.png':p.gender==='f'?'pictures/hero-female.png':null;
-  const paper=mk('paper',`<div class="fig${heroImg?' img':''}">${heroImg?`<img src="${heroImg}" alt="">`:portraitSVG(p.gender)}</div>`);
+  const paper=mk('paper',`<div class="fig${heroImg?' img':''}">${heroImg?`<img src="${pic(heroImg)}" alt="">`:portraitSVG(p.gender)}</div>`);
   Object.entries(SLOT_POS).forEach(([k,pos])=>{const b=slotButton(k,null,view);b.style[pos.side==='l'?'left':'right']='0';b.style.top=pos.y+'%';paper.append(b);});
   const left=mk('pcol');left.append(paper);
   const row=(k,v)=>`<div><span>${k}</span><b></b></div>`;
@@ -1044,7 +1044,7 @@ window.addEventListener('resize',()=>document.querySelectorAll('.foe-img img').f
 function buildCombat(){
   hud();$screen.innerHTML='';
   const e=C.e,u=C.ui,page=mk('page fight');
-  page.append(mk('foe-win',`${e.image?`<div class="foe-img"><img src="${e.image}" alt="" onerror="this.parentNode.remove()"></div>`:''}
+  page.append(mk('foe-win',`${e.image?`<div class="foe-img"><img src="${pic(e.image)}" alt="" onerror="this.parentNode.remove()"></div>`:''}
     <div class="foe-info"><div class="foe-line"><span class="name">${e.boss?'👑 ':''}${e.name} <span class="dim">· ${e.level} ур.${C.total>1?` · враг ${C.total-C.queue.length} из ${C.total}`:''}</span></span><span class="hptxt"></span></div>
     <div class="bar fbar"><i></i></div></div>`));
   u.hpFill=page.querySelector('.fbar i');u.hpTxt=page.querySelector('.hptxt');
