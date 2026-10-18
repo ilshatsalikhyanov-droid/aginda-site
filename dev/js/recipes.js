@@ -28,9 +28,9 @@ const RECIPES = {
 (() => {
   const mats = {
     helmet: { rat_king_tail:1, rat_hide:1 },
-    gloves: { troll_tooth_adult:1, rat_hide:1 },
-    pants:  { rat_hide:2, rat_pelt:1 },
-    boots:  { rat_king_tail:1, troll_tooth_adult:1 },
+    gloves: { rat_king_tail:1, rat_hide:1 },
+    pants:  { rat_hide:2, rat_king_tail:1 },
+    boots:  { rat_king_tail:2 },
   };
   SET_ITEMS.filter(([, price]) => !price).forEach(([id, , slot, path]) => {
     RECIPES['recipe_' + id] = {

@@ -87,7 +87,7 @@ function hud(){
   // в бою верхней строки нет: уровень и имя врага уже есть в окне врага, место отдано картинке и логу; отступы шапки и экрана ужаты
   $hud.classList.toggle('infight',!!inFight);$screen.classList.toggle('infight',!!inFight);
   $hud.innerHTML=`${inFight?'':`<div class="hrow top"><div class="pill lvl">Ур.<b>${S.lvl}</b></div><div class="pill title">${SCENES[S.scene]?.place||SCENES[S.scene]?.title||''}</div><div class="pill ghost"></div></div>`}
-  <div class="hrow bottom"><div class="chips"><span class="chip hp">❤ ${hp}<span class="mx">/${mh}</span></span><span class="chip st">⚡ ${stam(S)}<span class="mx">/${maxStam(S)}</span></span><span class="chip co">${coinChip(S)}</span></div><button type="button" class="qtask" aria-label="Журнал заданий"></button><div class="icons"></div></div>
+  <div class="hrow bottom"><div class="chips"><span class="chip hp">❤ ${hp}<span class="mx">/${mh}</span></span><span class="chip st" title="${stam(S)<maxStam(S)?'До полной выносливости: '+waitText(stamWaitMin(S,maxStam(S))):'Выносливость полная'}">⚡ ${stam(S)}<span class="mx">/${maxStam(S)}</span></span><span class="chip co">${coinChip(S)}</span></div><button type="button" class="qtask" aria-label="Журнал заданий"></button><div class="icons"></div></div>
   ${inFight?'':`<i class="xpline" style="width:${S.xp/xpNeed(S)*100}%"></i>`}`;
   if(isAdmin()){
     const g=$hud.querySelector('.pill.ghost'),grp=document.createElement('div');grp.className='adm-group';
@@ -286,6 +286,7 @@ function go(id,msg=[]){
   $screen.innerHTML='';
   const page=mk('page'),act=mk('actions');
   if(sc.image)page.append(mk('scene-img',`<img src="${pic(sc.image)}" alt="${sc.title||''}"${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
+  else page.append(mk('scene-img ph'));   // нет картинки: пустое место той же гибкой высоты, чтобы кнопки не прыгали между экранами
   const body=mk('body',`<div class="text">${txt.split('\n\n').map(p=>`<p>${p}</p>`).join('')}</div>`);
   if(log.length)body.append(mk('log',log.map(l=>`<div>${l}</div>`).join('')));
   page.append(body);
@@ -314,7 +315,7 @@ function go(id,msg=[]){
   $screen.scrollTop=0;
 }
 
-const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум',pet:'Сила питомца',taken:'Получаемый урон',dmgPct:'Урон',hpPct:'Здоровье',share:'Удара на себя вместо питомца'};
+const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум',pet:'Сила питомца',taken:'Получаемый урон',dmgPct:'Урон',hpPct:'Здоровье',share:'Прикрытие питомца'};
 const PCT_STATS=['crit','dodge','pet','taken','dmgPct','hpPct','share'];
 const bonusText=b=>Object.entries(b).filter(([,v])=>v).map(([k,v])=>`${v>0?'+':''}${v}${PCT_STATS.includes(k)?'%':''} ${STAT_LABEL[k]}`).join(', ');
 
@@ -504,9 +505,9 @@ function questTasks(s){
     {k:'knight',t:'Подойти к Рыцарю внутреннего двора в Гильдии искателей.',short:'Подойти к Рыцарю',d:!!f.knight_met,show:!!f.m3},
     {k:'lvl4',t:'Достичь 4-го уровня.',short:'Достичь 4-го уровня',d:s.lvl>=4,show:!!f.knight_met},
     {k:'path_q',t:'Поговорить с Рыцарем о дальнейшем пути (4-й уровень).',short:'К Рыцарю: путь',d:!!f.path_quest,show:s.lvl>=4&&!!f.knight_met},
-    {k:'path_ment',t:'Послушать наставников: старого солдата у повозки в Кривом переулке, наёмника в харчевне «Последний ужин» и инструктора ловцов.',short:'Послушать наставников',d:heardAll(s),show:!!f.path_quest,par:true},
+    {k:'path_ment',t:'Послушать трёх бывалых: старого солдата у повозки в Кривом переулке, наёмника в харчевне «Последний ужин» и инструктора ловцов.',short:'Послушать трёх бывалых',d:heardAll(s),show:!!f.path_quest,par:true},
     {k:'path_pick',t:'Выбрать путь у Рыцаря: Щит, Меч или Укротитель Агинды.',short:'Выбрать путь',d:!!s.path,show:!!f.path_quest},
-    {k:'king5',t:'Победить Крысиного короля на 5-м уровне и рассказать об этом Рыцарю: он наградит на снаряжение.',short:'Рассказать Рыцарю о Короле',d:!!f.king5_paid,show:!!s.path&&s.lvl>=5},
+    {k:'king5',t:'Победить крысиного короля на 5-м уровне или выше и рассказать об этом Рыцарю: он наградит на снаряжение.',short:'Рассказать Рыцарю о короле',d:!!f.king5_paid,show:!!s.path&&s.lvl>=5},
   ].filter(x=>x.show!==false);
 }
 // Ежедневные задания (отдельная вкладка журнала). st: avail — можно взять, taken — взято, won — выполнено, осталось сдать, failed, done
@@ -615,14 +616,15 @@ function petSlotButton(back){
   b.setAttribute('aria-label','Питомец'+(p?': '+petName(p):''));b.onclick=()=>petSlotScreen(back);
   return p?attachTip(b,tipPet(p)):b;
 }
-function petSlotScreen(back){
+function petSlotScreen(back,note=''){
   $screen.innerHTML='';
   $screen.append(el('<h2>Питомец</h2>'));
+  if(note)$screen.append(el(`<div class="log">${note}</div>`));
   const cur=curPet(S);
-  if(cur)$screen.append(attachTip(btn(`${ENEMIES[cur.species].icon} ${petName(cur)}${cur.dead?' · погиб':''}`,()=>{doOp({op:'setpet',id:null});characterScreen(back);},'','нажмите, чтобы выпустить из клети'),tipPet(cur)));
+  if(cur)$screen.append(attachTip(btn(`${ENEMIES[cur.species].icon} ${petName(cur)}${cur.dead?' · погиб':''}`,()=>{const nm=petName(cur);doOp({op:'setpet',id:null});petSlotScreen(back,`${nm} убран из слота и остался в сумке. В бой он не пойдёт, пока вы не посадите его обратно (ниже или в инвентаре).`);},'','нажмите, чтобы убрать из слота (питомец останется в сумке)'),tipPet(cur)));
   const list=S.pets.filter(p=>!p.dead&&p.id!==S.pet);
   if(!list.length&&!cur)$screen.append(el('<p class="dim">Пойманных питомцев нет. Монстров ловят клетью-ловушкой в бою.</p>'));
-  list.forEach(p=>$screen.append(attachTip(btn(`${ENEMIES[p.species].icon} ${petName(p)}`,()=>{doOp({op:'setpet',id:p.id});characterScreen(back);},'','нажмите, чтобы посадить в клеть'),tipPet(p))));
+  list.forEach(p=>$screen.append(attachTip(btn(`${ENEMIES[p.species].icon} ${petName(p)}`,()=>{doOp({op:'setpet',id:p.id});characterScreen(back);},'','нажмите, чтобы посадить в слот'),tipPet(p))));
   $screen.append(btn('← Назад',()=>characterScreen(back)));
 }
 // Титулы: список с условиями, выбор активного титула (он показывается в окне «Персонаж»)
@@ -1021,9 +1023,12 @@ function startCombat(sc){
   if(mode==='escort'){S.daily=S.daily||{};S.daily.escortSt='fight';}
   beginCombat(sc,id,(Math.random()*4294967296)>>>0,opts);
 }
+const waitText=m=>m>=60?`${Math.floor(m/60)} ${plural(Math.floor(m/60),'час','часа','часов')}${m%60?` ${m%60} мин`:''}`:`${m} ${plural(m,'минуту','минуты','минут')}`;
 function noStrength(cur,m){
+  const full=stamWaitMin(S,maxStam(S));
   $screen.innerHTML='';
-  $screen.append(el(`<h2>Нет сил</h2><div class="text"><p>Отдыхайте ещё минимум ${m} ${plural(m,'минуту','минуты','минут')}.</p></div>
+  $screen.append(el(`<h2>Нет сил</h2><div class="text"><p>На следующий бой сил хватит примерно через ${waitText(m)}, до полной выносливости ждать ещё ${waitText(full)}.</p>
+    <p>Выносливость (⚡) растёт сама, по одному очку в минуту, даже пока игра закрыта. Пока ждёте, можно заглянуть в лавку или к ремесленнице, свести питомцев в Доме ловцов или поговорить в чате.</p></div>
     <p class="dim">Выносливость: ${cur}/${maxStam(S)}. Бой требует ${STAM_COST}.</p>`));
   $screen.append(btn('Вернуться на площадь',()=>go('city_center'),'primary'));
 }
@@ -1151,6 +1156,13 @@ function finish(outcome){
   if(outcome==='lose')return showLose(res);
   showWin(res);
 }
+// После боя: если питомец погиб, подсказать про воскрешение (бесплатно с ожиданием или сразу за монеты) и дать кнопку в Дом ловцов
+function reviveHint(){
+  const p=S.pets.find(x=>x.dead&&!x.reviveAt);if(!p)return;
+  const price=revivePrice(p,S.lvl),min=reviveMin(p);
+  $screen.append(el(`<div class="card">${ENEMIES[p.species].icon} ${petName(p)} <span class="tag">погиб</span><div class="dim" style="font-size:13px">Воскресить можно в Доме ловцов: сразу за ${price} ${coinIcon()} или бесплатно, подождав ${min} ${plural(min,'минуту','минуты','минут')}.</div></div>`));
+  $screen.append(btn('Воскресить питомца',()=>go('lovtsy_revive'),''));
+}
 function showWin(res){
   const e=C.e,items=res.items,n=res.coinsN,cap=!!res.captured,notes=[...res.notes];
   let head='Победа',text;
@@ -1172,12 +1184,14 @@ function showWin(res){
   [...notes,...xpLines.filter(l=>!l.endsWith('опыта'))].forEach(l=>box.append(mk('drow note',l)));
   $screen.innerHTML='';
   $screen.append(el(`<h2>${head}</h2><div class="text"><p>${text}</p></div>`),box);
+  reviveHint();
   C.sc.combat.after.forEach((a,i)=>$screen.append(btn(a.t,()=>go(a.to),i?'':'primary')));
 }
 function showLose(){
   const e=C.e;
   $screen.innerHTML='';
   $screen.append(el(`<h2>Поражение</h2><div class="text"><p>${e.name} сбивает вас с ног, и в глазах темнеет. Очнувшись, вы едва можете подняться.</p>${C.mode==='escort'?'<p>Задание сопровождения провалено. Новое можно будет взять завтра.</p>':''}</div>`));
+  reviveHint();
   $screen.append(btn('Подняться',()=>go((C.sc&&C.sc.combat&&C.sc.combat.resume)||'city_center'),'primary'));   // герой остаётся на той же локации
 }
 
