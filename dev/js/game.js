@@ -314,8 +314,8 @@ function go(id,msg=[]){
   $screen.scrollTop=0;
 }
 
-const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум',pet:'Сила питомца',taken:'Получаемый урон',dmgPct:'Урон',hpPct:'Здоровье'};
-const PCT_STATS=['crit','dodge','pet','taken','dmgPct','hpPct'];
+const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум',pet:'Сила питомца',taken:'Получаемый урон',dmgPct:'Урон',hpPct:'Здоровье',share:'Удара на себя вместо питомца'};
+const PCT_STATS=['crit','dodge','pet','taken','dmgPct','hpPct','share'];
 const bonusText=b=>Object.entries(b).filter(([,v])=>v).map(([k,v])=>`${v>0?'+':''}${v}${PCT_STATS.includes(k)?'%':''} ${STAT_LABEL[k]}`).join(', ');
 
 // ---- Подсказка с характеристиками: наведение мышью или долгое нажатие на телефоне ----
@@ -506,6 +506,7 @@ function questTasks(s){
     {k:'path_q',t:'Поговорить с Рыцарем о дальнейшем пути (4-й уровень).',short:'К Рыцарю: путь',d:!!f.path_quest,show:s.lvl>=4&&!!f.knight_met},
     {k:'path_ment',t:'Послушать наставников: старого солдата у повозки в Кривом переулке, наёмника в харчевне «Последний ужин» и инструктора ловцов.',short:'Послушать наставников',d:heardAll(s),show:!!f.path_quest,par:true},
     {k:'path_pick',t:'Выбрать путь у Рыцаря: Щит, Меч или Укротитель Агинды.',short:'Выбрать путь',d:!!s.path,show:!!f.path_quest},
+    {k:'king5',t:'Победить Крысиного короля на 5-м уровне и рассказать об этом Рыцарю: он наградит на снаряжение.',short:'Рассказать Рыцарю о Короле',d:!!f.king5_paid,show:!!s.path&&s.lvl>=5},
   ].filter(x=>x.show!==false);
 }
 // Ежедневные задания (отдельная вкладка журнала). st: avail — можно взять, taken — взято, won — выполнено, осталось сдать, failed, done

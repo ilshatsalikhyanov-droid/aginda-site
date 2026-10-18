@@ -186,7 +186,7 @@ function newCombat(s, id, opts = {}) {
   const pp = curPet(s), pet = pp && !pp.dead ? { pid: pp.id, species: pp.species, rank: pp.rank, ...petStats(pp, s.lvl, petBonusPct(s)) } : null;
   if (pet) pet.cur = pet.hp;
   const queue = (opts.queue || []).slice();
-  return { id, lvl: s.lvl, buff: s.buffPct != null ? s.buffPct : buffPct(s, opts.now || 0), dmgPct: titleBonus(s, 'dmgPct'), pDmg: 1 + (pathPct(s, 'dmg') + setBonus(s, 'dmgPct')) / 100, pTaken: 1 + (pathPct(s, 'taken') + setBonus(s, 'taken')) / 100, critMul: (pathOf(s) && pathOf(s).critMul) || 1.5, e: { ...e, cur: e.hp }, pet, round: 0, captureUsed: false, petRetreat: false, over: null, queue, total: 1 + queue.length, kills: [], aux: auxList(s), usedPotions: 0, usedIds: [], mode: opts.mode || null, noCapture: !!opts.noCapture || (!!e.boss && !(cageOf(s) && cageOf(s).bossOk)) || (e.cageTier || 1) > ((cageOf(s) && cageOf(s).tier) || 0),   // босса (кроме Прочной клети) и монстра, которого клеть не удержит, поймать нельзя
+  return { id, lvl: s.lvl, buff: s.buffPct != null ? s.buffPct : buffPct(s, opts.now || 0), dmgPct: titleBonus(s, 'dmgPct'), share: Math.min(0.9, 0.5 + setBonus(s, 'share') / 100), pDmg: 1 + (pathPct(s, 'dmg') + setBonus(s, 'dmgPct')) / 100, pTaken: 1 + (pathPct(s, 'taken') + setBonus(s, 'taken')) / 100, critMul: (pathOf(s) && pathOf(s).critMul) || 1.5, e: { ...e, cur: e.hp }, pet, round: 0, captureUsed: false, petRetreat: false, over: null, queue, total: 1 + queue.length, kills: [], aux: auxList(s), usedPotions: 0, usedIds: [], mode: opts.mode || null, noCapture: !!opts.noCapture || (!!e.boss && !(cageOf(s) && cageOf(s).bossOk)) || (e.cageTier || 1) > ((cageOf(s) && cageOf(s).tier) || 0),   // босса (кроме Прочной клети) и монстра, которого клеть не удержит, поймать нельзя
     log: [`Бой начался. Против вас — ${low(e.name)}${queue.length ? (queue.length === 1 ? ' (и ещё один ждёт своей очереди)' : ' (и ещё ' + queue.length + ' ждут своей очереди)') : ''}.`] };
 }
 
@@ -260,7 +260,7 @@ function combatRound(C, h, ch, R) {
   // 3. противник: урон делится пополам между героем и питомцем (до блока и уклонения)
   let D = e.dmg + rngInt(R, -1, 2), cr = '';
   if (rngInt(R, 1, 100) <= e.crit) { D = D * 1.5; cr = ' <b>Крит!</b>'; }
-  const share = pet ? 0.5 : 1;
+  const share = pet ? (C.share || 0.5) : 1;   // доля удара, которую принимает герой (у Щита больше: он прикрывает питомца)
   if (zd === ea) C.log.push(`${e.name} бьёт в ${Z[ea].acc}, но вы успеваете закрыться.`);
   else if (rngInt(R, 1, 100) <= Math.min(40, (total(h, 'agi') + total(h, 'dodge')) * bm)) C.log.push(`${e.name} бьёт в ${Z[ea].acc}, но вы уворачиваетесь.`);
   else {
@@ -271,7 +271,7 @@ function combatRound(C, h, ch, R) {
     if (pb === ea) C.log.push(pc('Питомец закрывается от удара.'));
     else if (rngInt(R, 1, 100) <= pet.dodge) C.log.push(pc('Питомец уворачивается.'));
     else {
-      const d = Math.max(1, Math.round(D * 0.5) - pet.def); pet.cur -= d;
+      const d = Math.max(1, Math.round(D * (1 - (C.share || 0.5))) - pet.def); pet.cur -= d;
       C.log.push(pc(`Удар по питомцу: −${d}`));
       if (pet.cur <= 0) {
         const pp = (h.pets || []).find((p) => p.id === pet.pid); if (pp) pp.dead = true;
@@ -308,6 +308,7 @@ function applyOutcome(s, h, C, outcome, R, now = Date.now()) {
   if (outcome === 'lose') { s.losses = (s.losses || 0) + 1; s.hp = 1; s.hpAt = now; s.hpFrac = 0; if (escort) s.daily.escortSt = 'failed'; return res; }
   s.wins = (s.wins || 0) + 1;   // победа (в т.ч. поимка) — один раз за бой; бои с людьми — позже
   const kills = outcome === 'capture' ? [C.id] : (C.kills.length ? C.kills : [C.id]);
+  if (outcome === 'win' && kills.includes('rat_king') && (C.lvl || h.lvl) >= 5) { s.flags = s.flags || {}; if (!s.flags.king5) s.flags.king5 = 1; }   // первая победа над королём на 5-м уровне: рыцарь наградит
   if (outcome === 'capture') s.captures = (s.captures || 0) + 1;   // счётчики для титулов: поимки и победы по видам
   else { s.kills = s.kills || {}; kills.forEach((id) => { s.kills[id] = (s.kills[id] || 0) + 1; }); }
   let coinsN = 0, xp = 0, fxMin = 1; const items = [];

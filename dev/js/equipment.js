@@ -102,12 +102,13 @@ const EQUIPMENT = {
 // остальное — рецепты у ремесленницы. Вещь пути носит только свой путь (поле path), с minLvl 5. Бонусы за 2, 4 и 7 вещей одного комплекта — SETS.
 // bonus.pet — % к силе питомца (только у Укротителя). Бонусы комплектов: те же ключи плюс taken (% к получаемому урону), dmgPct, hpPct (% к урону, здоровью).
 // Цифры черновые: SET_POWER множит все бонусы комплектов (подгонка dev/pathcheck.js: с комплектом ≈80% побед, без — ≈10% на 5-м уровне).
-const SET_POWER = { shield:2.75, sword:2.5, tamer:2.1 };   // по путям: подогнано dev/tune-sets.js (2026-10-18): на 5-м уровне с комплектом ≈80% побед, без ≈10%
+const SET_POWER = { shield:1.5, sword:2.5, tamer:2.17 };   // по путям: подогнано dev/tune-sets.js (2026-10-18): на 5-м уровне с комплектом ≈80% побед, без ≈10%
 const sp = (v, path) => (v ? (Math.round(v * SET_POWER[path]) || (v > 0 ? 1 : -1)) : 0);
-const spAll = (b, path) => Object.fromEntries(Object.entries(b).map(([k, v]) => [k, sp(v, path)]));
+const spAll = (b, path) => Object.fromEntries(Object.entries(b).map(([k, v]) => [k, k === 'share' ? v : sp(v, path)]));   // share (доля удара на герое, в процентных пунктах) не масштабируется
+const SWORD_SHARE = { 2:4, 4:4, 7:4 };   // «Парирование» Меча: доля удара на герое растёт на столько процентных пунктов за 2, 4 и 7 вещей (всего 62% вместо 50%; у Щита 84%)
 const SETS = {
-  panzer:   { name:'Панцирный комплект', path:'shield', bonus:{ 2:spAll({ hp:20 }, 'shield'), 4:spAll({ taken:-5 }, 'shield'), 7:spAll({ hpPct:10, taken:-5 }, 'shield') } },
-  zubchaty: { name:'Зубчатый комплект',  path:'sword',  bonus:{ 2:spAll({ crit:4 }, 'sword'), 4:spAll({ dmgPct:5 }, 'sword'), 7:spAll({ dmgPct:8, crit:6 }, 'sword') } },
+  panzer:   { name:'Панцирный комплект', path:'shield', bonus:{ 2:spAll({ hp:20, share:10 }, 'shield'), 4:spAll({ taken:-5, share:12 }, 'shield'), 7:spAll({ hpPct:10, taken:-5, share:12 }, 'shield') } },
+  zubchaty: { name:'Зубчатый комплект',  path:'sword',  bonus:{ 2:spAll({ crit:4, share:SWORD_SHARE[2] }, 'sword'), 4:spAll({ dmgPct:5, share:SWORD_SHARE[4] }, 'sword'), 7:spAll({ dmgPct:8, crit:6, share:SWORD_SHARE[7] }, 'sword') } },
   lovchiy:  { name:'Ловчий комплект',    path:'tamer',  bonus:{ 2:spAll({ pet:5 }, 'tamer'), 4:spAll({ pet:5, hp:15 }, 'tamer'), 7:spAll({ pet:8, hpPct:10 }, 'tamer') } },
 };
 const SET_ITEMS = [];   // [id, цена покупки | 0 (крафт), слот, путь]: нужен для лавок и рецептов
@@ -142,11 +143,19 @@ const SET_ITEMS = [];   // [id, цена покупки | 0 (крафт), сло
     }],
   };
   const price = { weapon: 90, offhand: 70, chest: 90 };   // покупаются в «Богатом Искателе»; остальные вещи крафтятся (рецепты у ремесленницы)
+  // картинки значков (pictures/equipment/<имя>.jpg); у кого нет — остаётся эмодзи
+  const img = { shield_weapon:'panzer-mace', shield_offhand:'panzer-shield', shield_chest:'panzer-chest', shield_helmet:'panzer-helmet',
+                shield_gloves:'panzer-gloves', shield_pants:'panzer-pants', shield_boots:'panzer-boots',
+                sword_weapon:'zubchaty-sword', sword_offhand:'zubchaty-buckler', sword_chest:'zubchaty-chest', sword_helmet:'zubchaty-helmet',
+                sword_gloves:'zubchaty-gloves', sword_pants:'zubchaty-pants', sword_boots:'zubchaty-boots',
+                tamer_weapon:'lovchiy-hook', tamer_offhand:'lovchiy-lure', tamer_chest:'lovchiy-vest', tamer_helmet:'lovchiy-hood',
+                tamer_pants:'lovchiy-pants' };
   Object.keys(defs).forEach((path) => {
     const [set, items] = defs[path];
     Object.keys(items).forEach((slot) => {
       const [name, icon, desc, stats] = items[slot], id = path + '_' + slot;
       EQUIPMENT[id] = { name, icon, slot, path, set, minLvl: 5, desc, bonus: spAll(stats, path), price: price[slot] || 0 };
+      if (img[id]) EQUIPMENT[id].img = 'pictures/equipment/' + img[id] + '.jpg';
       SET_ITEMS.push([id, price[slot] || 0, slot, path]);
     });
   });

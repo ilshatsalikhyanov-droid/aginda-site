@@ -1,5 +1,7 @@
 // Сцены игры (текст, выборы, картинки). Вычисления и данные — в data.js и core.js.
 // Сцена: text (строка или функция), choices[], onEnter(state), combat:{enemy,win,lose}
+// Подсказка Рыцаря после выбора пути: про комплект
+const KIT_HINT = `\n\n— И снаряжение собирай сам, не жди подачек. Что-то купишь у торговца в «Богатом Искателе», а остальное придётся делать у ремесленницы в Кривом переулке: рецепты берёшь у неё же, материалы добываешь сам. Перчатки и сапоги без зуба болотника не выйдут, так что загляни к болоту, пока ты ещё четвёртый. Не поленись, посмотри, что тебе нужно: на пятом уровне без своих вещей за стену лучше не ходить.`;
 const SCENES = {
   guild_hall: {
     place:'Гильдия искателей',
@@ -164,6 +166,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
       {t:'Сдать молочный зуб', to:'knight_turnin', if:s=>escortView(s)==='won'&&(s.inv.troll_tooth||0)>0},
       {t:'Поговорить о дальнейшем пути', to:'knight_path1', if:s=>s.lvl>=PATH_MIN_LVL&&!s.flags.path_quest},
       {t:'Выбрать путь', to:'knight_choose', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest},
+      {t:'Рассказать о победе над Королём', to:'knight_king', if:s=>!!s.flags.king5&&!s.flags.king5_paid},
       {t:'Задание взято', to:'knight_a', if:s=>escortView(s)==='taken', dim:true, sub:'Отряд ждёт в Кривом переулке'},
       {t:'Задание провалено', to:'knight_a', if:s=>escortView(s)==='failed', dim:true, sub:'Новое можно взять завтра'},
       {t:'Задание выполнено', to:'knight_a', if:s=>escortView(s)==='done', dim:true, sub:'Новое можно взять завтра'},
@@ -204,7 +207,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
     resume:'guild_hall',
     onEnter:s=>{if(!canPickPath(s,'shield'))return;const c=pickPath(s,'shield');return ['Путь выбран: Щит Агинды'+(c?' (−'+c+' '+coinIcon()+')':'')];},
-    text:s=>s.path==='shield'?`— Щит Агинды. Хорошо. Держи строй, пока другие делают дело. Записано.`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    text:s=>s.path==='shield'?`— Щит Агинды. Хорошо. Держи строй, пока другие делают дело. Записано.${KIT_HINT}`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
     choices:[{t:'Выйти в зал', to:'guild_hall'}]},
   knight_pick_sword: {
     needs:s=>canPickPath(s,'sword'),
@@ -215,7 +218,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
     resume:'guild_hall',
     onEnter:s=>{if(!canPickPath(s,'sword'))return;const c=pickPath(s,'sword');return ['Путь выбран: Меч Агинды'+(c?' (−'+c+' '+coinIcon()+')':'')];},
-    text:s=>s.path==='sword'?`— Меч Агинды. Быстрый и острый. Только не лезь первым. Записано.`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    text:s=>s.path==='sword'?`— Меч Агинды. Быстрый и острый. Только не лезь первым. Записано.${KIT_HINT}`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
     choices:[{t:'Выйти в зал', to:'guild_hall'}]},
   knight_pick_tamer: {
     needs:s=>canPickPath(s,'tamer'),
@@ -226,7 +229,18 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
     resume:'guild_hall',
     onEnter:s=>{if(!canPickPath(s,'tamer'))return;const c=pickPath(s,'tamer');return ['Путь выбран: Укротитель Агинды'+(c?' (−'+c+' '+coinIcon()+')':'')];},
-    text:s=>s.path==='tamer'?`— Укротитель Агинды. Береги клеть и зверя. Записано.`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    text:s=>s.path==='tamer'?`— Укротитель Агинды. Береги клеть и зверя. Записано.${KIT_HINT}`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    choices:[{t:'Выйти в зал', to:'guild_hall'}]},
+  knight_king: {
+    needs:s=>!!s.flags.king5&&!s.flags.king5_paid,
+    grant:true,
+    place:'Гильдия искателей',
+    image:'pictures/locations/seekers-guild.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
+    resume:'guild_hall',
+    onEnter:s=>{if(!s.flags.king5||s.flags.king5_paid)return;s.flags.king5_paid=1;gain(s,{gold:KING5_REWARD});return ['Награда: +'+KING5_REWARD+' '+coinIcon()];},
+    text:`— Король пал, а ты на ногах? Слышал, слышал. Держи на снаряжение: докупишь, чего не хватает, и не трать на ерунду.`,
     choices:[{t:'Выйти в зал', to:'guild_hall'}]},
   knight_take: {
     needs:(s,ctx)=>!!s.flags.m3&&!escortTaken(s,ctx&&ctx.now),

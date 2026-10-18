@@ -24,7 +24,7 @@ function protectedState(s) {
 const inCombat = (stored, now) => !!(stored && stored.combat && now - stored.combat.t0 < COMBAT_TTL);
 
 // Первое сохранение героя: принимается, но очищается — известные предметы (не больше 99), известные флаги, разумные монеты и ловец.
-const KNOWN_FLAGS = ['contract', 'gear', 'recipe', 'cage_gift', 'cloak_made', 'captured', 'm3gear', 'm3', 'knight_met', 'knight_task', 'belt_given', 'slayer1', 'slayer2', 'slayer3', 'slayer4', 'path_quest', 'path_free', 'heard_shield', 'heard_sword', 'heard_tamer'];
+const KNOWN_FLAGS = ['contract', 'gear', 'recipe', 'cage_gift', 'cloak_made', 'captured', 'm3gear', 'm3', 'knight_met', 'knight_task', 'belt_given', 'slayer1', 'slayer2', 'slayer3', 'slayer4', 'path_quest', 'path_free', 'heard_shield', 'heard_sword', 'heard_tamer', 'king5', 'king5_paid'];
 function sanitizeNew(out) {
   out.base = out.base || {}; if (out.base.luck == null) out.base.luck = 1; if ((out.base.stamina || 0) < 50) out.base.stamina = 50;
   if (!(out.lvl >= 1)) out.lvl = 1;
