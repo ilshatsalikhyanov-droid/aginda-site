@@ -38,12 +38,12 @@ const SCALING = {
   },
   troll_cub_fat: {
     4: { hp:98, dmg:119.9, def:4.5 },
-    5: { hp:439, dmg:138.5, def:6.8, pow:0.94 },
-    6: { hp:658, dmg:144, def:10.1, pow:1.16 },
-    7: { hp:987, dmg:215.9, def:15.2, pow:0.99 },
-    8: { hp:1481, dmg:322, def:22.8, pow:0.85 },
-    9: { hp:2221, dmg:483.9, def:34.2, pow:0.71 },
-    10: { hp:3332, dmg:580.7, def:51.3, pow:0.74 },
+    5: { hp:439, dmg:138.5, def:6.8, pow:0.77 },
+    6: { hp:658, dmg:144, def:10.1, pow:1.04 },
+    7: { hp:987, dmg:215.9, def:15.2, pow:0.89 },
+    8: { hp:1481, dmg:322, def:22.8, pow:0.77 },
+    9: { hp:2221, dmg:483.9, def:34.2, pow:0.64 },
+    10: { hp:3332, dmg:580.7, def:51.3, pow:0.67 },
   },
   troll_bog: {
     5: { hp:210, dmg:76.5, def:6, pow:2.59 },
