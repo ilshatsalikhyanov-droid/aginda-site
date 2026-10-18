@@ -8,5 +8,5 @@ const isTestBuild = () => BUILD_ENV
   : (location.protocol === 'http:' || location.protocol === 'file:' || location.hostname.startsWith('dev--'));
 // Версия картинок: при публикации подставляется хэш папки pictures (меняется только когда картинки изменились) и дописывается к адресам картинок (?v=…),
 // чтобы Telegram и браузер не держали старые. Локально пусто — адреса без версии.
-const ASSET_VER = 'acd44caf';
+const ASSET_VER = 'fdf75b15';
 const pic = (p) => ASSET_VER ? p + '?v=' + ASSET_VER : p;

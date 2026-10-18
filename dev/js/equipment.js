@@ -51,7 +51,7 @@ const EQUIPMENT = {
     bonus:{ hp:4, dmg:1 }, price:0,
   },
   necklace_troll_2: {
-    name:'Ожерелье убийцы троллей (Ступень 2)', icon:'📿', slot:'necklace',
+    name:'Ожерелье убийцы троллей (Ступень 2)', icon:'📿', img:'pictures/equipment/troll-slayer-necklace-2.jpg', slot:'necklace',
     desc:'Зубов на шнурке прибавилось. Рыцарь внутреннего двора запомнил вас в лицо.',
     bonus:{ hp:8, dmg:2 }, price:0,
   },
