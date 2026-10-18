@@ -162,11 +162,72 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     choices:[
       {t:'Взять задание', to:'knight_take', if:s=>escortView(s)==='none'},
       {t:'Сдать молочный зуб', to:'knight_turnin', if:s=>escortView(s)==='won'&&(s.inv.troll_tooth||0)>0},
+      {t:'Поговорить о дальнейшем пути', to:'knight_path1', if:s=>s.lvl>=PATH_MIN_LVL&&!s.flags.path_quest},
+      {t:'Выбрать путь', to:'knight_choose', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest},
       {t:'Задание взято', to:'knight_a', if:s=>escortView(s)==='taken', dim:true, sub:'Отряд ждёт в Кривом переулке'},
       {t:'Задание провалено', to:'knight_a', if:s=>escortView(s)==='failed', dim:true, sub:'Новое можно взять завтра'},
       {t:'Задание выполнено', to:'knight_a', if:s=>escortView(s)==='done', dim:true, sub:'Новое можно взять завтра'},
       {t:'Назад', to:'guild_hall'},
     ]},
+  knight_path1: {
+    needs:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.knight_met,
+    grant:true,
+    place:'Гильдия искателей',
+    image:'pictures/locations/seekers-guild.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
+    resume:'guild_hall',
+    onEnter:s=>{if(s.flags.path_quest)return;s.flags.path_quest=1;return ['Новое задание: послушать наставников и выбрать путь'];},
+    text:`— Мелочь у стен ты гонять научился. Но отряд идёт дальше, туда, где мелочи нет. Там нужен тот, кто держит зверя, тот, кто его режет, и тот, кто умеет его унять.
+
+— Поговори с этими людьми. Старого солдата найдёшь у повозки в Кривом переулке, наёмника — в «Последнем ужине», а инструктора ловцов ты и так знаешь. Потом вернись и скажи мне, кто ты.`,
+    choices:[{t:'Выйти в зал', to:'guild_hall'}]},
+  knight_choose: {
+    place:'Гильдия искателей',
+    image:'pictures/locations/seekers-guild.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
+    resume:'guild_hall',
+    text:s=>`— Ну? Кто ты?${s.path?'\n\nСейчас ты — '+PATHS[s.path].name+'. '+(pathCost(s)?'Передумать можно, но это стоит '+pathCost(s)+' '+coinIcon()+'.':'Передумать можно один раз бесплатно, пока тебе четвёртый уровень.'):''}`,
+    choices:[
+      {t:'Щит Агинды', to:'knight_pick_shield', if:s=>s.path!=='shield', sub:'Крепче, но бьёшь слабее'},
+      {t:'Меч Агинды', to:'knight_pick_sword', if:s=>s.path!=='sword', sub:'Бьёшь сильнее, но хрупкий'},
+      {t:'Укротитель Агинды', to:'knight_pick_tamer', if:s=>s.path!=='tamer', sub:'Питомец сильнее, сам бьёшь слабее'},
+      {t:'Выйти в зал', to:'guild_hall'},
+    ]},
+  knight_pick_shield: {
+    needs:s=>canPickPath(s,'shield'),
+    grant:true,
+    place:'Гильдия искателей',
+    image:'pictures/locations/seekers-guild.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
+    resume:'guild_hall',
+    onEnter:s=>{if(!canPickPath(s,'shield'))return;const c=pickPath(s,'shield');return ['Путь выбран: Щит Агинды'+(c?' (−'+c+' '+coinIcon()+')':'')];},
+    text:s=>s.path==='shield'?`— Щит Агинды. Хорошо. Держи строй, пока другие делают дело. Записано.`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    choices:[{t:'Выйти в зал', to:'guild_hall'}]},
+  knight_pick_sword: {
+    needs:s=>canPickPath(s,'sword'),
+    grant:true,
+    place:'Гильдия искателей',
+    image:'pictures/locations/seekers-guild.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
+    resume:'guild_hall',
+    onEnter:s=>{if(!canPickPath(s,'sword'))return;const c=pickPath(s,'sword');return ['Путь выбран: Меч Агинды'+(c?' (−'+c+' '+coinIcon()+')':'')];},
+    text:s=>s.path==='sword'?`— Меч Агинды. Быстрый и острый. Только не лезь первым. Записано.`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    choices:[{t:'Выйти в зал', to:'guild_hall'}]},
+  knight_pick_tamer: {
+    needs:s=>canPickPath(s,'tamer'),
+    grant:true,
+    place:'Гильдия искателей',
+    image:'pictures/locations/seekers-guild.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.70, y:0.42, scale:1.9},   // приближаемся к рыцарю внутреннего двора
+    resume:'guild_hall',
+    onEnter:s=>{if(!canPickPath(s,'tamer'))return;const c=pickPath(s,'tamer');return ['Путь выбран: Укротитель Агинды'+(c?' (−'+c+' '+coinIcon()+')':'')];},
+    text:s=>s.path==='tamer'?`— Укротитель Агинды. Береги клеть и зверя. Записано.`:`— Это обойдётся в ${pathCost(s)} ${coinIcon()}, а у тебя столько нет. Приходи, когда соберёшь.`,
+    choices:[{t:'Выйти в зал', to:'guild_hall'}]},
   knight_take: {
     needs:(s,ctx)=>!!s.flags.m3&&!escortTaken(s,ctx&&ctx.now),
     grant:true,
@@ -301,6 +362,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     title:'Харчевня «Последний ужин»',
     text:`Низкий зал, закопчённые балки, длинные столы, исцарапанные ножами. За стойкой хозяин мешает варево в огромном котле. На заднем дворе скрипит жёрнов: здесь мелют всё, что может превратиться в муку.`,
     choices:[
+      {t:'Поговорить с наёмником', to:'mentor_sword', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest},
       {t:'Купить', to:'tavern_buy'},
       {t:'Приготовить', to:'tavern_cook'},
       {t:'Выйти в квартал', to:'quarter'},
@@ -308,6 +370,36 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
   tavern_buy: { image:'pictures/locations/tavern.jpg', zoom:{x:0.66, y:0.38, scale:2.0}, place:'Харчевня «Последний ужин»', shop:true, stock:['rat_bread','recipe_rat_bread'], back:'tavern' },
   tavern_cook: { image:'pictures/locations/tavern.jpg', zoom:{x:0.66, y:0.38, scale:2.0}, place:'Харчевня «Последний ужин»', cook:true, back:'tavern' },
 
+  mentor_shield: {
+    needs:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest,
+    grant:true,
+    place:'Кривой переулок',
+    image:'pictures/locations/crooked-lane.jpg',
+    imagePos:'center 45%',
+    resume:'alley',
+    onEnter:s=>{if(s.flags.heard_shield)return;s.flags.heard_shield=1;},
+    text:`У повозки, привалившись к колесу, сидит старый солдат отряда: сухой, в шрамах, с потухшей трубкой в зубах.\n\n— Я много лет держал повозку, пока другие отходили. Дело честное: ты крепче, удары тебя берут хуже, а за твоей спиной кто-то дышит спокойно. Платишь тем, что сам бьёшь слабее. Но тебя будут ждать в каждом отряде. Подумай.`,
+    choices:[{t:'Назад', to:'alley'}]},
+  mentor_sword: {
+    needs:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest,
+    grant:true,
+    place:'Харчевня «Последний ужин»',
+    image:'pictures/locations/tavern.jpg',
+    resume:'tavern',
+    onEnter:s=>{if(s.flags.heard_sword)return;s.flags.heard_sword=1;},
+    text:`За дальним столом, спиной к стене, сидит наёмник и чистит нож. Увидев вас, он даже не прячет ухмылку.\n\n— Слушай внимательно, я объясняю бесплатно. Пока одни закрываются, кто-то должен делать дырки. Бьёшь сильнее всех, удачный удар как подарок. Минус один: ты хрупкий, как стекло в кабаке. Поэтому убивай быстрее, чем убьют тебя. Идеальная арифметика.`,
+    choices:[{t:'Назад', to:'tavern'}]},
+  mentor_tamer: {
+    needs:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest,
+    grant:true,
+    place:'Дом ловцов · 1 этаж',
+    image:'pictures/locations/catchers-instructor.jpg',
+    imagePos:'center 45%',
+    zoom:{x:0.64, y:0.38, scale:2.0},   // приближаемся к инструктору ловцов
+    resume:'lovtsy1',
+    onEnter:s=>{if(s.flags.heard_tamer)return;s.flags.heard_tamer=1;},
+    text:`Инструктор отрывается от прута и смотрит на вас поверх клети.\n\n— Укротитель — это тот, кто сам не дерётся, зато у него дерётся друг. Питомец у тебя будет сильнее, чем у остальных, и слушаться будет лучше. Минус: если друг упал, ты остаёшься с кинжалом и надеждой. Так что береги его лучше, чем себя.`,
+    choices:[{t:'Назад', to:'lovtsy1'}]},
   alley: {
     place:'Кривой переулок',
     image:'pictures/locations/crooked-lane.jpg',
@@ -315,6 +407,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     text:`Переулок петляет между покосившимися стенами, под ногами хлюпает грязь. Из щелей между домами тянет зверем и железом. Здесь не любят праздных гостей.`,   // заглушка
     choices:[
       {t:'Разведывательный отряд (Задание)', to:'escort_a', if:s=>escortView(s)==='taken'},
+      {t:'Поговорить со старым солдатом у повозки', to:'mentor_shield', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest},
       {t:'Дом ловцов и укротителей', to:'house'},
       {t:'Лавка ремесленника', to:'craft_shop'},
       {t:'Выход из города', to:'north_walls', if:s=>!!s.flags.m3},
@@ -406,6 +499,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     choices:[
       {t:'Поговорить с инструктором', to:'lovtsy_i1', if:s=>!s.flags.cage_gift},
       {t:'Поговорить с инструктором', to:'lovtsy_again', if:s=>s.flags.cage_gift},
+      {t:'Спросить про путь Укротителя', to:'mentor_tamer', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest},
       {t:'Синергия', to:'lovtsy_syn'},
       {t:'Продать питомца', to:'lovtsy_sell', if:s=>(s.pets||[]).some(p=>p.id!==s.pet)},
       {t:'Воскресить питомца', to:'lovtsy_res_a', if:s=>(s.pets||[]).some(p=>p.dead)},

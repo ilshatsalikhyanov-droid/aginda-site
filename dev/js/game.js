@@ -331,7 +331,7 @@ function tipItem(it,slotLabel){
     ${it.minLvl?`<div><span>Уровень</span><b>${it.minLvl}</b></div>`:''}${it.sell?`<div><span>Цена продажи</span><b>${it.sell} ${coinIcon()}</b></div>`:''}${it.desc?`<div class="ts">${it.desc}</div>`:''}`;
 }
 function tipPet(p){
-  const m=ENEMIES[p.species],st=petStats(p,S.lvl);
+  const m=ENEMIES[p.species],st=petStats(p,S.lvl,petBonusPct(S));
   return `<div class="tn">${m.icon} ${petName(p)}</div>
     <div class="ts">${p.dead?'Погиб':'Ранг '+p.rank+' · '+Math.round(RANK_F[p.rank]*100)+'% от монстра вашего уровня'}</div>
     <div><span>Здоровье</span><b>${st.hp}</b></div><div><span>Урон</span><b>${st.dmg}</b></div><div><span>Защита</span><b>${st.def}</b></div>
@@ -497,6 +497,10 @@ function questTasks(s){
     {k:'lvl3',t:'Достичь 3-го уровня.',short:'Достичь 3-го уровня',d:s.lvl>=3,show:!!f.gear},
     {k:'m3',t:'Вернуться к мастеру-наставнику (3-й уровень).',short:'Вернуться к наставнику',d:!!f.m3,show:s.lvl>=3&&!!f.gear},
     {k:'knight',t:'Подойти к Рыцарю внутреннего двора в Гильдии искателей.',short:'Подойти к Рыцарю',d:!!f.knight_met,show:!!f.m3},
+    {k:'lvl4',t:'Достичь 4-го уровня.',short:'Достичь 4-го уровня',d:s.lvl>=4,show:!!f.knight_met},
+    {k:'path_q',t:'Поговорить с Рыцарем о дальнейшем пути (4-й уровень).',short:'К Рыцарю: путь',d:!!f.path_quest,show:s.lvl>=4&&!!f.knight_met},
+    {k:'path_ment',t:'Послушать наставников: старого солдата у повозки в Кривом переулке, наёмника в харчевне «Последний ужин» и инструктора ловцов.',short:'Послушать наставников',d:heardAll(s),show:!!f.path_quest,par:true},
+    {k:'path_pick',t:'Выбрать путь у Рыцаря: Щит, Меч или Укротитель Агинды.',short:'Выбрать путь',d:!!s.path,show:!!f.path_quest},
   ].filter(x=>x.show!==false);
 }
 // Ежедневные задания (отдельная вкладка журнала). st: avail — можно взять, taken — взято, won — выполнено, осталось сдать, failed, done
@@ -644,9 +648,9 @@ function characterScreen(back){
   const dmgB=eqSum(S,'dmg')+eqSum(S,'str'),critB=eqSum(S,'crit')+eqSum(S,'agi'),dodB=eqSum(S,'dodge')+eqSum(S,'agi');
   const abil=['str','agi','int'].map(k=>bareStat(S,k)+plusTxt(eqSum(S,k))).join(' / ');
   const stats=mk('cstats',`
-      ${statRow('Уровень',S.lvl)}
+      ${statRow('Уровень',S.lvl+(pathOf(S)?' · '+pathOf(S).short:''))}
       ${statRow('Опыт',S.xp+'/'+xpNeed(S))}
-      ${statRow('Здоровье',S.hp+'/'+hpBare+plusTxt(eqSum(S,'hp')+titleBonus(S,'hp')))}
+      ${statRow('Здоровье',pathOf(S)?S.hp+'/'+maxHp(S):S.hp+'/'+hpBare+plusTxt(eqSum(S,'hp')+titleBonus(S,'hp')))}
       ${statRow('Выносл.',stam(S)+'/'+stBare+plusTxt(eqSum(S,'stamina')))}
       ${statRow('Урон',bareStat(S,'str')+plusTxt(dmgB))}
       ${statRow('Защита',bareStat(S,'def')+plusTxt(eqSum(S,'def')))}
@@ -902,7 +906,7 @@ function chatRender(st){
   if(!st.msgs.size)l.append(mk('chat-empty','Пока тихо. Напишите первым.'));
   [...st.msgs.values()].sort((a,b)=>a.id-b.id).forEach(m=>{
     const row=mk('cm'+(m.nick===st.me?' me':'')),n=document.createElement('button');
-    n.type='button';n.className='cn';n.textContent=m.lvl?`${m.nick} [${m.lvl}]`:m.nick;n.onclick=()=>chatProfile(st,m.nick);   // в чате только имя и уровень
+    n.type='button';n.className='cn';n.textContent=m.lvl?`${m.nick} [${m.lvl}${PATHS[m.path]?' · '+PATHS[m.path].short:''}]`:m.nick;n.onclick=()=>chatProfile(st,m.nick);   // в чате только имя и уровень
     const t=document.createElement('span');t.className='ct';t.textContent=chatClock(m.t);
     const x=document.createElement('span');x.className='cx';x.textContent=m.text;
     row.append(t,n,x);
@@ -973,8 +977,8 @@ function profileScreen(p,onBack){
   Object.entries(SLOT_POS).forEach(([k,pos])=>{const b=slotButton(k,null,view);b.style[pos.side==='l'?'left':'right']='0';b.style.top=pos.y+'%';paper.append(b);});
   const left=mk('pcol');left.append(paper);
   const row=(k,v)=>`<div><span>${k}</span><b></b></div>`;
-  const stats=mk('cstats',row('Уровень')+row('Победы')+row('Поражения')+row('Титул')+row('Клан'));
-  const vals=[p.lvl,p.wins,p.losses,p.title||'—',p.clan||'—'];
+  const stats=mk('cstats',row('Уровень')+row('Путь')+row('Победы')+row('Поражения')+row('Титул')+row('Клан'));
+  const vals=[p.lvl,PATHS[p.path]?PATHS[p.path].name:'—',p.wins,p.losses,p.title||'—',p.clan||'—'];
   stats.querySelectorAll('b').forEach((b,i)=>{b.textContent=vals[i];});
   const wrap=mk('char-wrap');wrap.append(left,stats);page.append(wrap);
   const jr=mk('jrow');['necklace','ring1','ring2','earring1','earring2','cage'].forEach(k=>jr.append(slotButton(k,null,view)));page.append(jr);

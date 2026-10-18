@@ -38,6 +38,28 @@ const titleBonusText = (b) => [b.hp ? `+${b.hp} к здоровью` : '', b.cap
 // Название выбранного (или первого открытого) титула героя s; нужно и игре, и серверу (профиль игрока в чате)
 const titleNameOf = (s) => { const u = Object.keys(TITLES).filter((k) => TITLES[k].has(s)), id = u.includes(s.title) ? s.title : u[0]; return id ? TITLES[id].name : ''; };
 
+// Пути героя с 4-го уровня (решено автором 2026-10-18). Выбор — у Рыцаря внутреннего двора; наставники объясняют плюсы и минусы.
+// hp — % к максимальному здоровью; dmg — % к урону героя; taken — % к получаемому урону (минус — меньше); critMul — во сколько раз бьёт крит (обычно 1,5);
+// pet — Укротитель: питомец сильнее (здоровье и урон) на petBase% + Разум героя, но не больше petMax%. Цифры подогнаны 2026-10-18 по dev/pathcheck.js: каждый путь против тролля-болотника и Крысиного короля на 4–8 уровнях держит 76–88% (без пути — 78–84%).
+const PATH_MIN_LVL = 4;
+const PATHS = {
+  shield: { name:'Щит Агинды',        short:'Щит',        hp:20, taken:-10, dmg:-15, desc:'Крепче и держит удар, но бьёт слабее.' },
+  sword:  { name:'Меч Агинды',        short:'Меч',        hp:-20, dmg:12, critMul:2, desc:'Бьёт сильнее и точнее, но хрупкий.' },
+  tamer:  { name:'Укротитель Агинды', short:'Укротитель', dmg:-15, pet:true, petBase:0, petMax:12, desc:'Питомец сильнее, сам бьёт слабее.' },
+};
+const pathOf = (s) => (s && PATHS[s.path]) || null;
+const pathName = (s) => (pathOf(s) ? pathOf(s).name : '');
+// сколько стоит выбрать путь: первый выбор бесплатно; первая смена на 4-м уровне бесплатно; дальше — уровень героя × 100 бронзовых
+const pathCost = (s) => !s.path ? 0 : (s.lvl === PATH_MIN_LVL && !(s.flags && s.flags.path_free)) ? 0 : s.lvl * 100;
+const canPickPath = (s, k) => !!PATHS[k] && s.lvl >= PATH_MIN_LVL && !!(s.flags && s.flags.path_quest) && s.path !== k && coins(s) >= pathCost(s);
+function pickPath(s, k) {   // вызывается из сцены (на телефоне и на сервере)
+  const c = pathCost(s);
+  if (c > 0) spend(s, c); else if (s.path) s.flags.path_free = 1;
+  s.path = k; s.hp = Math.min(s.hp, maxHp(s));
+  return c;
+}
+const heardAll = (s) => !!(s.flags && s.flags.heard_shield && s.flags.heard_sword && s.flags.heard_tamer);
+
 const ITEMS = {
   // Зелья здоровья лечат процент от максимума: малое 20%, среднее 35%, большое 50%. aux — вспомогательный предмет: сам занимает слот пояса (в слот встаёт сильнейшее из имеющихся).
   potion:     { name:'Малое зелье здоровья', icon:'🧪', img:'pictures/equipment/small-health-potion.jpg', desc:'Глоток горького красного отвара. Ссадины затягивает, переломы — нет.', use:{healPct:20}, aux:true, price:15 },

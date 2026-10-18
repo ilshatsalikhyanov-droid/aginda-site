@@ -7,7 +7,7 @@
 // а с этапа Б2 ещё инвентарь с монетами, экипировка, питомцы и флаги заданий. Их меняют только действия (js/ops.js),
 // которые сервер повторяет над своим состоянием; выбранный титул — тоже (действие settitle). Админ проверяется как обычный игрок:
 // его инструменты — действия admin_*, которые сервер принимает только по секрету ADMIN_IDS. Имя, пол и дата рождения берутся из профиля игрока (таблица players) при первом сохранении и дальше не меняются. Клиентское: сцена и прочее неважное.
-const GUARD_KEYS = ['lvl', 'xp', 'wins', 'losses', 'trapper', 'base', 'cls', 'stam', 'stamAt', 'inv', 'equip', 'pets', 'pet', 'petSeq', 'flags', 'title', 'name', 'gender', 'birth', 'daily', 'escortDone', 'buff', 'kills', 'captures'];
+const GUARD_KEYS = ['lvl', 'xp', 'wins', 'losses', 'trapper', 'base', 'cls', 'stam', 'stamAt', 'inv', 'equip', 'pets', 'pet', 'petSeq', 'flags', 'path', 'title', 'name', 'gender', 'birth', 'daily', 'escortDone', 'buff', 'kills', 'captures'];
 const MAX_OPS = 300;
 const FIRST_SAVE_MAX_LVL = 5;          // первое сохранение принимается очищенным (sanitizeNew), уровень не выше этого
 const COMBAT_MS_MIN = 700;             // быстрее раунд сыграть нельзя (в игре — секунда анимации)
@@ -24,7 +24,7 @@ function protectedState(s) {
 const inCombat = (stored, now) => !!(stored && stored.combat && now - stored.combat.t0 < COMBAT_TTL);
 
 // Первое сохранение героя: принимается, но очищается — известные предметы (не больше 99), известные флаги, разумные монеты и ловец.
-const KNOWN_FLAGS = ['contract', 'gear', 'recipe', 'cage_gift', 'cloak_made', 'captured', 'm3gear', 'm3', 'knight_met', 'knight_task', 'belt_given', 'slayer1', 'slayer2', 'slayer3', 'slayer4'];
+const KNOWN_FLAGS = ['contract', 'gear', 'recipe', 'cage_gift', 'cloak_made', 'captured', 'm3gear', 'm3', 'knight_met', 'knight_task', 'belt_given', 'slayer1', 'slayer2', 'slayer3', 'slayer4', 'path_quest', 'path_free', 'heard_shield', 'heard_sword', 'heard_tamer'];
 function sanitizeNew(out) {
   out.base = out.base || {}; if (out.base.luck == null) out.base.luck = 1; if ((out.base.stamina || 0) < 50) out.base.stamina = 50;
   if (!(out.lvl >= 1)) out.lvl = 1;
@@ -37,7 +37,7 @@ function sanitizeNew(out) {
   const fl = {}; KNOWN_FLAGS.forEach((k) => { if (out.flags && out.flags[k]) fl[k] = 1; }); out.flags = fl;
   out.pets = (out.pets || []).filter((p) => ENEMIES[p.species] && RANKS.includes(p.rank)).slice(0, 20).map((p) => ({ id: p.id | 0, species: p.species, rank: p.rank, dead: !!p.dead, ...(p.dead && Number(p.reviveAt) > 0 ? { reviveAt: Number(p.reviveAt) } : {}) }));
   if (!out.pets.some((p) => p.id === out.pet)) out.pet = null;
-  out.daily = {}; out.escortDone = 0;
+  out.daily = {}; out.escortDone = 0; delete out.path;   // путь героя клиент выбрать сам не может: только через Рыцаря (сцены knight_pick_*)
   out.petSeq = Math.max(out.petSeq | 0, ...out.pets.map((p) => p.id), 0);
   const tr = out.trapper || {}; out.trapper = { lvl: Math.min(3, Math.max(0, tr.lvl | 0)), prog: Math.max(0, Number(tr.prog) || 0) };
   if (out.title && !(TITLES[out.title] && TITLES[out.title].has(out))) out.title = null;

@@ -161,6 +161,10 @@ function applyOp(s, op, ctx = {}) {   // ctx: {admin} — админские д�
         case 'lvl3': s.lvl = Math.min(s.lvl, 2); s.xp = 0; s.hp = Math.min(s.hp, maxHp(s)); break;
         case 'm3': delete f.m3; delete f.m3gear; drop('chest_simple'); drop('gloves_simple'); drop('pants_simple'); if (s.title === 'junior') s.title = null; break;
         case 'knight': delete f.knight_met; delete f.knight_task; break;
+        case 'lvl4': s.lvl = Math.min(s.lvl, 3); s.xp = 0; delete s.path; clampHp(s); break;
+        case 'path_ment': delete f.heard_shield; delete f.heard_sword; delete f.heard_tamer; break;
+        case 'path_q': delete f.path_quest; delete f.path_free; delete f.heard_shield; delete f.heard_sword; delete f.heard_tamer; delete s.path; clampHp(s); break;
+        case 'path_pick': delete f.path_free; delete s.path; clampHp(s); break;
         case 'escort': delete s.daily; drop('troll_tooth'); break;
         default: return OP_ERR('Неизвестное задание.');
       }

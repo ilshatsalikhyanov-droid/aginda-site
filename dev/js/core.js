@@ -53,7 +53,8 @@ function total(s, stat) {
   let v = bareStat(s, stat);
   equipped(s).forEach((i) => v += i.bonus?.[stat] || 0); return v;
 }
-const maxHp = (s) => bareStat(s, 'hp') + equipped(s).reduce((a, i) => a + (i.bonus?.hp || 0), 0) + titleBonus(s, 'hp');
+const pathPct = (s, k) => { const p = pathOf(s); return (p && p[k]) || 0; };   // процентная прибавка пути героя (см. PATHS в data.js)
+const maxHp = (s) => Math.round((bareStat(s, 'hp') + equipped(s).reduce((a, i) => a + (i.bonus?.hp || 0), 0) + titleBonus(s, 'hp')) * (1 + pathPct(s, 'hp') / 100));
 const maxStam = (s) => (s.base.stamina || 50) + equipped(s).reduce((a, i) => a + (i.bonus?.stamina || 0), 0);
 
 // ---- Выносливость и здоровье: восстановление считается по времени (now — мс), в том числе пока игра закрыта ----
@@ -104,9 +105,10 @@ const RANK_F = { D: 1 / 2, C: 2 / 3, B: 5 / 6, A: 1 };   // доля харак�
 const petName = (p) => `${ENEMIES[p.species].name} [${p.rank}]`;
 // Сила питомца = доля ранга от характеристик его вида ДЛЯ УРОВНЯ ГЕРОЯ lvl (питомцы растут вместе с автолевелингом монстров:
 // питомец ранга D на 6 уровне ровно вдвое слабее монстра своего вида 6 уровня).
-function petStats(p, lvl) {
-  const m = enemyFor(p.species, lvl), f = RANK_F[p.rank];
-  return { hp: Math.max(1, Math.round(m.hp * f)), dmg: Math.max(1, Math.round(m.dmg * f)), def: Math.round(m.def * f), crit: m.crit * f, dodge: m.dodge * f };
+const petBonusPct = (s) => (pathOf(s) && pathOf(s).pet) ? Math.min(pathOf(s).petMax, Math.round(pathOf(s).petBase + bareStat(s, 'int'))) : 0;   // Укротитель: питомец сильнее
+function petStats(p, lvl, bonus = 0) {
+  const m = enemyFor(p.species, lvl), f = RANK_F[p.rank], k = 1 + bonus / 100;
+  return { hp: Math.max(1, Math.round(m.hp * f * k)), dmg: Math.max(1, Math.round(m.dmg * f * k)), def: Math.round(m.def * f), crit: m.crit * f, dodge: m.dodge * f };
 }
 const curPet = (s) => (s.pets || []).find((p) => p.id === s.pet);
 function addPet(s, species, rank = 'D') {
@@ -164,17 +166,17 @@ const ld = (s) => `<span class="ld">${s}</span>`;   // служебные стр
 const buffPct = (s, now) => (s.buff && s.buff.until > now ? s.buff.pct : 0);
 // Снимок героя для боя (на сервере воспроизведение идёт только по нему): всё, что влияет на бой. Бонус еды фиксируется на начало боя.
 function heroSnap(s, now) {
-  return JSON.parse(JSON.stringify({ lvl: s.lvl, base: s.base, equip: s.equip, hp: s.hp, trapper: trapper(s), pets: s.pets || [], pet: s.pet, inv: Object.fromEntries(Object.keys(ITEMS).filter((id) => ITEMS[id].aux).map((id) => [id, (s.inv && s.inv[id]) || 0])), flags: {}, buffPct: buffPct(s, now || 0), tb: { hp: titleBonus(s, 'hp'), capture: titleBonus(s, 'capture'), dmgPct: titleBonus(s, 'dmgPct') } }));
+  return JSON.parse(JSON.stringify({ lvl: s.lvl, base: s.base, equip: s.equip, hp: s.hp, trapper: trapper(s), pets: s.pets || [], pet: s.pet, inv: Object.fromEntries(Object.keys(ITEMS).filter((id) => ITEMS[id].aux).map((id) => [id, (s.inv && s.inv[id]) || 0])), flags: {}, path: s.path || null, buffPct: buffPct(s, now || 0), tb: { hp: titleBonus(s, 'hp'), capture: titleBonus(s, 'capture'), dmgPct: titleBonus(s, 'dmgPct') } }));
 }
 
 // Новый бой: состояние боя целиком сериализуемо (без ссылок на экран).
 // opts: {queue: [id…] — враги, ждущие своей очереди (бьёт всегда первый живой), mode: 'escort' — задание сопровождения, noCapture — клеть выключена}
 function newCombat(s, id, opts = {}) {
   const e = enemyFor(id, s.lvl);
-  const pp = curPet(s), pet = pp && !pp.dead ? { pid: pp.id, species: pp.species, rank: pp.rank, ...petStats(pp, s.lvl) } : null;
+  const pp = curPet(s), pet = pp && !pp.dead ? { pid: pp.id, species: pp.species, rank: pp.rank, ...petStats(pp, s.lvl, petBonusPct(s)) } : null;
   if (pet) pet.cur = pet.hp;
   const queue = (opts.queue || []).slice();
-  return { id, lvl: s.lvl, buff: s.buffPct != null ? s.buffPct : buffPct(s, opts.now || 0), dmgPct: titleBonus(s, 'dmgPct'), e: { ...e, cur: e.hp }, pet, round: 0, captureUsed: false, petRetreat: false, over: null, queue, total: 1 + queue.length, kills: [], aux: auxList(s), usedPotions: 0, usedIds: [], mode: opts.mode || null, noCapture: !!opts.noCapture || !!e.boss || (e.cageTier || 1) > ((s.equip && ITEMS[s.equip.cage] && ITEMS[s.equip.cage].tier) || 0),   // босса и монстра, которого клеть не удержит, поймать нельзя
+  return { id, lvl: s.lvl, buff: s.buffPct != null ? s.buffPct : buffPct(s, opts.now || 0), dmgPct: titleBonus(s, 'dmgPct'), pDmg: 1 + pathPct(s, 'dmg') / 100, pTaken: 1 + pathPct(s, 'taken') / 100, critMul: (pathOf(s) && pathOf(s).critMul) || 1.5, e: { ...e, cur: e.hp }, pet, round: 0, captureUsed: false, petRetreat: false, over: null, queue, total: 1 + queue.length, kills: [], aux: auxList(s), usedPotions: 0, usedIds: [], mode: opts.mode || null, noCapture: !!opts.noCapture || !!e.boss || (e.cageTier || 1) > ((s.equip && ITEMS[s.equip.cage] && ITEMS[s.equip.cage].tier) || 0),   // босса и монстра, которого клеть не удержит, поймать нельзя
     log: [`Бой начался. Против вас — ${low(e.name)}${queue.length ? (queue.length === 1 ? ' (и ещё один ждёт своей очереди)' : ' (и ещё ' + queue.length + ' ждут своей очереди)') : ''}.`] };
 }
 
@@ -191,7 +193,7 @@ function enemyDown(C) {
 function combatRestore(C, h) {
   h.hp = maxHp(h);
   const pp = curPet(h);
-  if (pp) { pp.dead = false; const st = petStats(pp, h.lvl); C.pet = { pid: pp.id, species: pp.species, rank: pp.rank, ...st, cur: st.hp }; C.petRetreat = false; }
+  if (pp) { pp.dead = false; const st = petStats(pp, h.lvl, petBonusPct(h)); C.pet = { pid: pp.id, species: pp.species, rank: pp.rank, ...st, cur: st.hp }; C.petRetreat = false; }
 }
 
 // Один раунд боя. C — бой, h — герой (s на телефоне, снимок на сервере), ch — выбор игрока, R — генератор.
@@ -224,8 +226,8 @@ function combatRound(C, h, ch, R) {
   else if (ed === za) C.log.push(`Вы бьёте в ${Z[za].acc}, но ${low(e.name)} закрывается.`);
   else if (rngInt(R, 1, 100) <= e.dodge) C.log.push(`Вы бьёте в ${Z[za].acc}, но ${low(e.name)} уворачивается.`);
   else {
-    let d = (total(h, 'str') + total(h, 'dmg')) * bm * (1 + (C.dmgPct || 0) / 100) + rngInt(R, 0, 2) - e.def, cr = '';   // dmgPct — титул «Крысобой»
-    if (rngInt(R, 1, 100) <= Math.min(60, (total(h, 'agi') + total(h, 'crit')) * bm)) { d = d * 1.5; cr = ' <b>Крит!</b>'; }
+    let d = (total(h, 'str') + total(h, 'dmg')) * bm * (1 + (C.dmgPct || 0) / 100) * (C.pDmg || 1) + rngInt(R, 0, 2) - e.def, cr = '';   // dmgPct — титул «Крысобой»
+    if (rngInt(R, 1, 100) <= Math.min(60, (total(h, 'agi') + total(h, 'crit')) * bm)) { d = d * (C.critMul || 1.5); cr = ' <b>Крит!</b>'; }
     d = Math.max(1, Math.round(d)); e.cur -= d;
     C.log.push(`Вы бьёте в ${Z[za].acc}: <span class="good">−${d}</span>${cr}`);
   }
@@ -252,7 +254,7 @@ function combatRound(C, h, ch, R) {
   if (zd === ea) C.log.push(`${e.name} бьёт в ${Z[ea].acc}, но вы успеваете закрыться.`);
   else if (rngInt(R, 1, 100) <= Math.min(40, (total(h, 'agi') + total(h, 'dodge')) * bm)) C.log.push(`${e.name} бьёт в ${Z[ea].acc}, но вы уворачиваетесь.`);
   else {
-    const d = Math.max(1, Math.round(D * share - total(h, 'def') * bm)); h.hp -= d;
+    const d = Math.max(1, Math.round(D * share * (C.pTaken || 1) - total(h, 'def') * bm)); h.hp -= d;
     C.log.push(`${e.name} бьёт в ${Z[ea].acc}: <span class="bad">−${d}</span>${cr}`);
   }
   if (pet) {
