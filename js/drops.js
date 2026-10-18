@@ -2,8 +2,8 @@
 // DROP_ITEMS — предметы, которые падают (попадают в ITEMS).
 const DROP_ITEMS = {
   bronze_coin: { name:'Бронзовая монета', icon:'🥉', img:'pictures/equipment/bronze-coin.jpg', desc:'Ходовая мелочь, самая мелкая монета города.', currency:true },
-  silver_coin: { name:'Серебряная монета', icon:'🥈', desc:'Сто бронзовых — одна серебряная.', currency:true },
-  gold_coin:   { name:'Золотая монета', icon:'🥇', desc:'Сто серебряных — одна золотая. Во внешнем круге её мало кто держал в руках.', currency:true },
+  silver_coin: { name:'Серебряная монета', icon:'🥈', img:'pictures/equipment/silver-coin.jpg', desc:'Сто бронзовых — одна серебряная.', currency:true },
+  gold_coin:   { name:'Золотая монета', icon:'🥇', img:'pictures/equipment/gold-coin.jpg', desc:'Сто серебряных — одна золотая. Во внешнем круге её мало кто держал в руках.', currency:true },
   rat_pelt:    { name:'Шкура крысёнка', icon:'🟤', img:'pictures/equipment/rat-cub-pelt.jpg', desc:'Клочок облезлого меха. Годится разве что на продажу.', junk:true, sell:1 },
   troll_tooth: { name:'Молочный зуб тролля-болотника', icon:'🦷', img:'pictures/equipment/troll-milk-tooth.jpg', desc:'Молочный зуб откормленного детёныша. Рыцарь примет его как знак, что дорога отряду расчищена.', quest:true },
   rat_king_tail: { name:'Хвост крысиного короля', icon:'🐀', img:'pictures/equipment/rat-king-tail.jpg', desc:'Толстый чешуйчатый хвост Крысиного короля. Сгодится для рецептов и для помола.', material:true, sell:5, grind:'flour' },   // grind — можно перемолоть в инвентаре: 1 хвост = 1 мука

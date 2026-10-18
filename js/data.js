@@ -44,8 +44,8 @@ const ITEMS = {
   potion_mid: { name:'Среднее зелье здоровья', icon:'🧪', img:'pictures/equipment/medium-health-potion.jpg', desc:'Отвар погуще. Хватит, чтобы подняться после крепкого удара.', use:{healPct:35}, aux:true, price:30 },
   potion_big: { name:'Большое зелье здоровья', icon:'🧪', img:'pictures/equipment/big-health-potion.jpg', desc:'Тяжёлая склянка под сургучом. Мёртвого не поднимет, а полумёртвого — вполне.', use:{healPct:50}, aux:true, price:50 },
   // Харчевня «Последний ужин»: мука мелется из хвостов в инвентаре (grind), блюда готовятся по рецептам с полем cook, еда даёт food: {pct, min}
-  flour:      { name:'Мука', icon:'🌾', desc:'Серая мука для приготовления пищи.', material:true },
-  rat_bread:  { name:'Крысиный хлеб', icon:'🍞', desc:'Простая и сытная еда простолюдинов из внешнего круга.', food:{ pct:30, min:60 }, price:60, stack:true },   // можно купить в харчевне (60 бронзовых) или приготовить из муки
+  flour:      { name:'Мука', icon:'🌾', img:'pictures/equipment/flour.jpg', desc:'Серая мука для приготовления пищи.', material:true },
+  rat_bread:  { name:'Крысиный хлеб', icon:'🍞', img:'pictures/equipment/rat-bread.jpg', desc:'Простая и сытная еда простолюдинов из внешнего круга.', food:{ pct:30, min:60 }, price:60, stack:true },   // можно купить в харчевне (60 бронзовых) или приготовить из муки
   ...EQUIPMENT,
   ...DROP_ITEMS,
   ...RECIPES,
