@@ -1,2 +1,2 @@
 // Сгенерировано supabase/build.py — не править. Версия серверной функции, которую ждёт эта версия игры.
-const SERVER_BUILD = '99ee0f1da7';
+const SERVER_BUILD = '4ea742f663';

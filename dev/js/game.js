@@ -314,13 +314,18 @@ function go(id,msg=[]){
   $screen.scrollTop=0;
 }
 
-const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум'};
-const bonusText=b=>Object.entries(b).filter(([,v])=>v).map(([k,v])=>`${v>0?'+':''}${v}${k==='crit'||k==='dodge'?'%':''} ${STAT_LABEL[k]}`).join(', ');
+const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум',pet:'Сила питомца',taken:'Получаемый урон',dmgPct:'Урон',hpPct:'Здоровье'};
+const PCT_STATS=['crit','dodge','pet','taken','dmgPct','hpPct'];
+const bonusText=b=>Object.entries(b).filter(([,v])=>v).map(([k,v])=>`${v>0?'+':''}${v}${PCT_STATS.includes(k)?'%':''} ${STAT_LABEL[k]}`).join(', ');
 
 // ---- Подсказка с характеристиками: наведение мышью или долгое нажатие на телефоне ----
 const fmtNum=n=>String(Math.round(n*10)/10);
+function setTip(it){   // комплект: сколько вещей надето и какие бонусы за 2, 4, 7
+  const st=SETS[it.set],n=setCount(S,it.set);
+  return `<div class="ts">${st.name} (${n}/7)</div>`+Object.keys(st.bonus).map(th=>`<div><span class="${n>=+th?'pos':'neg'}">${th} ${plural(+th,'вещь','вещи','вещей')}</span><b class="${n>=+th?'pos':'neg'}">${bonusText(st.bonus[th])}</b></div>`).join('');
+}
 function tipItem(it,slotLabel){
-  const lines=Object.entries(it.bonus||{}).filter(([,v])=>v).map(([k,v])=>`<div><span>${STAT_LABEL[k]}</span><b class="${v>0?'pos':'neg'}">${v>0?'+':''}${v}${k==='crit'||k==='dodge'?'%':''}</b></div>`).join('');
+  const lines=Object.entries(it.bonus||{}).filter(([,v])=>v).map(([k,v])=>`<div><span>${STAT_LABEL[k]}</span><b class="${v>0?'pos':'neg'}">${v>0?'+':''}${v}${PCT_STATS.includes(k)?'%':''}</b></div>`).join('');
   const cap=it.capture?it.capture.base.map(r=>`<div><span>Шанс поимки (${r.from}–${r.to} ур.)</span><b>${r.chance}%</b></div>`).join(''):'';
   const ck=it.cook?`<div class="ts">Рецепт блюда</div>`+Object.entries(it.cook.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс</span><b>${it.cook.chance}%</b></div><div><span>Готовит</span><b>${ITEMS[it.cook.result].name}</b></div>`:'';
   const fd=it.food?`<div><span>Урон, защита, крит, уклонение</span><b class="pos">+${it.food.pct}%</b></div><div><span>Действует</span><b>${it.food.min} мин</b></div>`:'';
@@ -328,7 +333,7 @@ function tipItem(it,slotLabel){
   const big=it.img?`<img class="tipimg" src="${pic(it.img)}" alt="">`:'';   // в подсказке картинка крупнее, чем в списках
   return `${big}<div class="tn">${it.img?'':iic(it)+' '}${it.name}${it.junk?' <span class="tag">хлам</span>':''}${it.material?' <span class="tag">материал</span>':''}</div>
     ${slotLabel?`<div class="ts">${slotLabel}</div>`:''}${it.cook?ck:it.food?fd:it.recipe?rec:(lines||(it.use?`<div><span>Лечит</span><b class="pos">${it.use.healPct}% здоровья</b></div>`:cap||it.material||it.junk||it.currency?'':'<div class="ts">Без бонусов</div>'))}${cap}
-    ${it.minLvl?`<div><span>Уровень</span><b>${it.minLvl}</b></div>`:''}${it.sell?`<div><span>Цена продажи</span><b>${it.sell} ${coinIcon()}</b></div>`:''}${it.desc?`<div class="ts">${it.desc}</div>`:''}`;
+    ${it.set&&SETS[it.set]?setTip(it):''}${it.path?`<div><span>Путь</span><b>${PATHS[it.path].short}</b></div>${it.path!==S.path?'<div class="ts"><span class="neg">Не действует: вещь другого пути</span></div>':''}`:''}${it.minLvl?`<div><span>Уровень</span><b>${it.minLvl}</b></div>`:''}${it.sell?`<div><span>Цена продажи</span><b>${it.sell} ${coinIcon()}</b></div>`:''}${it.desc?`<div class="ts">${it.desc}</div>`:''}`;
 }
 function tipPet(p){
   const m=ENEMIES[p.species],st=petStats(p,S.lvl,petBonusPct(S));
@@ -455,7 +460,7 @@ function craftScreen(sc,note=''){
   if(sc.image)page.append(mk('scene-img',`<img src="${pic(sc.image)}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
   if(note)body.append(mk('log',note));
   page.append(body);
-  const act=mk('actions'),ids=Object.keys(S.inv).filter(id=>ITEMS[id]?.recipe&&S.inv[id]>0);
+  const act=mk('actions'),ids=Object.keys(S.inv).filter(id=>ITEMS[id]?.recipe&&S.inv[id]>0&&(!ITEMS[id].path||ITEMS[id].path===S.path));
   if(!ids.length)act.append(mk('dim','Рецептов нет: ремесленнице нечего мастерить.'));
   ids.forEach(id=>{
     const it=ITEMS[id],r=it.recipe,res=ITEMS[r.result],can=canCraft(S,r);
@@ -585,7 +590,7 @@ const SLOT_POS={
   gloves:{side:'r',y:32}, weapon:{side:'r',y:51}, boots:{side:'r',y:90},
 };
 // Голые статы — белым, прибавка от экипировки — зелёным в скобках
-const eqSum=(s,stat)=>equipped(s).reduce((a,i)=>a+(i.bonus?.[stat]||0),0);
+const eqSum=(s,stat)=>equipped(s).reduce((a,i)=>a+(i.bonus?.[stat]||0),0)+setBonus(s,stat);
 const plusTxt=(n,suf='')=>n?` <i class="plus">(${n>0?'+':''}${n}${suf})</i>`:'';
 const statRow=(k,v)=>`<div><span>${k}</span><b>${v}</b></div>`;
 
@@ -825,7 +830,7 @@ function shopScreen(sc){
     if(sc.image)$screen.append(mk('scene-img',`<img src="${pic(sc.image)}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
     if(sc.text)$screen.append(el(`<div class="text"><p>${sc.text}</p></div>`));
     if(note)$screen.append(el(`<div class="log">${note}</div>`));
-    sc.stock.forEach(id=>{
+    sc.stock.filter(id=>!ITEMS[id].path||ITEMS[id].path===S.path).forEach(id=>{   // вещи и рецепты чужого пути не показываются
       const it=ITEMS[id],have=S.inv[id]||0,owned=!it.use&&!it.stack&&have>=(it.maxOwn||1),price=itemPrice(it,S);
       const b=btn(`${iic(it)} ${it.name} — ${price} ${coinIcon()}${it.stack?(have?` (в сумке ${have})`:''):!it.use&&have?` (куплено${it.maxOwn>1?' '+have+'/'+it.maxOwn:''})`:''}`,()=>{
         const r=doOp({op:'buy',id});

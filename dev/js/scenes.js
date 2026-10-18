@@ -499,7 +499,8 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
     choices:[
       {t:'Поговорить с инструктором', to:'lovtsy_i1', if:s=>!s.flags.cage_gift},
       {t:'Поговорить с инструктором', to:'lovtsy_again', if:s=>s.flags.cage_gift},
-      {t:'Спросить про путь Укротителя', to:'mentor_tamer', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest},
+      {t:'Спросить про путь Укротителя', to:'mentor_tamer', if:s=>s.lvl>=PATH_MIN_LVL&&!!s.flags.path_quest&&s.path!=='tamer'},
+      {t:'Купить клеть', to:'lovtsy_buy', if:s=>s.path==='tamer'},
       {t:'Синергия', to:'lovtsy_syn'},
       {t:'Продать питомца', to:'lovtsy_sell', if:s=>(s.pets||[]).some(p=>p.id!==s.pet)},
       {t:'Воскресить питомца', to:'lovtsy_res_a', if:s=>(s.pets||[]).some(p=>p.dead)},
@@ -586,6 +587,9 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
 
 Хочешь сразу — плати, и он встанет на ноги. Монет нет — оставь его мне и жди. Чем зверь сильнее, тем дольше с ним возиться и тем дороже выйдет.`,
     choices:[{t:'Отдать питомца', to:'lovtsy_revive'},{t:'Назад', to:'lovtsy1'}]},
+  lovtsy_buy: { place:'Дом ловцов · 1 этаж', shop:true, stock:['cage_sturdy'], back:'lovtsy1',
+    image:'pictures/locations/catchers-instructor.jpg', imagePos:'center 45%', zoom:{x:0.64, y:0.38, scale:2.0},
+    text:'Инструктор достаёт из-под стола клеть с двойными прутьями. — Для своих. Обычную такой не удержать, а эту — можно. Только не геройствуй раньше времени.' },
   lovtsy_revive: { place:'Дом ловцов · 1 этаж', revive:true, back:'lovtsy1' },
   lovtsy_syn: { place:'Дом ловцов · 1 этаж', synergy:true, back:'lovtsy1' },
   lovtsy_sell: { place:'Дом ловцов · 1 этаж', petsell:true, back:'lovtsy1' },
@@ -612,7 +616,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
       {t:'Купить рецепты', to:'craft_buy'},
       {t:'Назад', to:'craft_shop'},
     ]},
-  craft_buy: { place:'Лавка ремесленника', shop:true, stock:['recipe_rat_king_belt'], back:'craft_talk',
+  craft_buy: { place:'Лавка ремесленника', shop:true, stock:['recipe_rat_king_belt', ...SET_ITEMS.filter(x=>!x[1]).map(x=>'recipe_'+x[0])], back:'craft_talk',   // рецепты вещей пути видны только своему пути
     image:'pictures/locations/craft-shop.jpg', imagePos:'center 38%', zoom:{x:0.53, y:0.36, scale:2.1},
     text:'Ремесленница вытирает руки и достаёт из-под прилавка свёрнутые листы. — Простые рецепты, без подвохов. Я не торгуюсь.' },
   craft_make: { place:'Лавка ремесленника', craft:true, back:'craft_talk',
@@ -630,7 +634,7 @@ ${s.flags.m3?'В дальнем углу, особняком от толпы, с
       {t:'Куплю', to:'lavka_buy'},
       {t:'Выйти на площадь', to:'city_center'},
     ]},
-  lavka_buy: { place:'Лавка: Богатый Искатель', shop:true, stock:['potion','potion_mid','potion_big','ring_pioneer'], back:'lavka',
+  lavka_buy: { place:'Лавка: Богатый Искатель', shop:true, stock:['potion','potion_mid','potion_big','ring_pioneer', ...SET_ITEMS.filter(x=>x[1]).map(x=>x[0])], back:'lavka',   // вещи пути (оружие, щит, нагрудник) видны только своему пути
     text:'Хозяин кивает на полку: — Без торга и без скидок.' },
   lavka_sell: { place:'Лавка: Богатый Искатель', sell:true, back:'lavka' },
 

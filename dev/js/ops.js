@@ -18,6 +18,7 @@ function applyOp(s, op, ctx = {}) {   // ctx: {admin} — админские д�
       if (op.id == null) { s.equip[op.key] = null; clampHp(s); return { ok: true }; }
       const it = ITEMS[op.id];
       if (!it || it.slot !== slotType(op.key)) return OP_ERR('Это сюда не надеть.');
+      if (it.path && it.path !== s.path) return OP_ERR('Это снаряжение другого пути.');
       if (it.minLvl && s.lvl < it.minLvl) return OP_ERR(`${it.name}: нужен ${it.minLvl}-й уровень.`);
       if ((s.inv[op.id] || 0) - equippedCount(s, op.id) + (s.equip[op.key] === op.id ? 1 : 0) < 1) return OP_ERR('Нет такого предмета.');
       s.equip[op.key] = op.id; clampHp(s); return { ok: true };
@@ -41,6 +42,7 @@ function applyOp(s, op, ctx = {}) {   // ctx: {admin} — админские д�
     }
     case 'buy': {     // {id}
       const it = ITEMS[op.id], price = it && itemPrice(it, s);
+      if (it && it.path && it.path !== s.path) return OP_ERR('Это снаряжение другого пути.');
       if (!it || !price || it.currency || coins(s) < price) return OP_ERR('Не хватает монет.');
       if (!it.use && !it.stack && (s.inv[op.id] || 0) >= (it.maxOwn || 1)) return OP_ERR('Уже куплено.');
       spend(s, price); s.inv[op.id] = (s.inv[op.id] || 0) + 1; autoEquip(s, op.id); return { ok: true };
@@ -95,6 +97,7 @@ function applyOp(s, op, ctx = {}) {   // ctx: {admin} — админские д�
     case 'craft': {   // {id, seed}: рецепт из сумки. Шанс бросает сервер (seed выдаёт он)
       const it = ITEMS[op.id], r = it && it.recipe;
       if (!r || (s.inv[op.id] || 0) < 1) return OP_ERR('Нет такого рецепта.');
+      if (it.path && it.path !== s.path) return OP_ERR('Этот рецепт для другого пути.');
       if (!craftable(s, r)) return OP_ERR('Не хватает материалов.');
       Object.entries(r.ingredients).forEach(([k, n]) => s.inv[k] -= n);
       s.inv[op.id]--;

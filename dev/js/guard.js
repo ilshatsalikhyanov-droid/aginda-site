@@ -32,7 +32,7 @@ function sanitizeNew(out) {
   out.xp = Math.max(0, Number(out.xp) || 0); out.wins = Math.min(500, Math.max(0, out.wins | 0)); out.losses = Math.min(500, Math.max(0, out.losses | 0));
   const inv = {}; Object.keys(out.inv || {}).forEach((k) => { if (ITEMS[k]) inv[k] = Math.min(99, Math.max(0, Math.floor(Number(out.inv[k]) || 0))); });
   out.inv = inv; if (coins(out) > 5000) setCoins(out, 5000);
-  const eq = {}, used = {}; Object.keys(out.equip || {}).forEach((k) => { const id = out.equip[k]; if (SLOTS[k] && id && ITEMS[id] && ITEMS[id].slot === slotType(k) && (used[id] || 0) < (inv[id] || 0)) { eq[k] = id; used[id] = (used[id] || 0) + 1; } });   // одну вещь в двух слотах не носят
+  const eq = {}, used = {}; Object.keys(out.equip || {}).forEach((k) => { const id = out.equip[k]; if (SLOTS[k] && id && ITEMS[id] && !ITEMS[id].path && ITEMS[id].slot === slotType(k) && (used[id] || 0) < (inv[id] || 0)) { eq[k] = id; used[id] = (used[id] || 0) + 1; } });   // одну вещь в двух слотах не носят
   out.equip = eq;
   const fl = {}; KNOWN_FLAGS.forEach((k) => { if (out.flags && out.flags[k]) fl[k] = 1; }); out.flags = fl;
   out.pets = (out.pets || []).filter((p) => ENEMIES[p.species] && RANKS.includes(p.rank)).slice(0, 20).map((p) => ({ id: p.id | 0, species: p.species, rank: p.rank, dead: !!p.dead, ...(p.dead && Number(p.reviveAt) > 0 ? { reviveAt: Number(p.reviveAt) } : {}) }));
