@@ -40,9 +40,18 @@ function equipItem(s, id, key) {
   const k = key || ks.find((x) => !s.equip[x]) || ks[0];
   s.equip[k] = id;
 }
-function equipped(s) { return Object.values(s.equip).filter(Boolean).map((id) => ITEMS[id]).filter((it) => !it || !it.minLvl || s.lvl >= it.minLvl); }   // вещи с minLvl выше уровня героя не действуют
+const itemActive = (s, it) => !it || ((!it.minLvl || s.lvl >= it.minLvl) && (!it.path || it.path === s.path));   // вещи с minLvl выше уровня героя и вещи чужого пути не действуют
+function equipped(s) { return Object.values(s.equip).filter(Boolean).map((id) => ITEMS[id]).filter((it) => itemActive(s, it)); }
+// Комплекты путей (SETS в equipment.js): бонусы за 2, 4 и 7 вещей одного комплекта складываются по достигнутым ступеням.
+const setCount = (s, id) => equipped(s).filter((i) => i && i.set === id).length;
+function setBonus(s, stat) {
+  let v = 0; const seen = {};
+  equipped(s).forEach((i) => { if (i && i.set && !seen[i.set] && SETS[i.set]) { seen[i.set] = 1; const n = setCount(s, i.set); Object.keys(SETS[i.set].bonus).forEach((th) => { if (n >= +th) v += SETS[i.set].bonus[th][stat] || 0; }); } });
+  return v;
+}
+const cageOf = (s) => { const c = s.equip && ITEMS[s.equip.cage]; return c && itemActive(s, c) ? c : null; };
 function autoEquip(s, id) {
-  const it = ITEMS[id]; if (!it.slot || (it.minLvl && s.lvl < it.minLvl)) return;
+  const it = ITEMS[id]; if (!it.slot || !itemActive(s, it)) return;
   const free = slotsFor(it.slot).find((k) => !s.equip[k]); if (free) s.equip[free] = id;
 }
 
@@ -51,9 +60,10 @@ const LEVEL_MUL = 1.5;
 const bareStat = (s, stat) => { const b = s.base[stat] || 0; return ['hp', 'str', 'agi', 'int'].includes(stat) ? Math.round(b * Math.pow(LEVEL_MUL, s.lvl - 1)) : b; };
 function total(s, stat) {
   let v = bareStat(s, stat);
-  equipped(s).forEach((i) => v += i.bonus?.[stat] || 0); return v;
+  equipped(s).forEach((i) => v += i.bonus?.[stat] || 0); return v + setBonus(s, stat);
 }
-const maxHp = (s) => bareStat(s, 'hp') + equipped(s).reduce((a, i) => a + (i.bonus?.hp || 0), 0) + titleBonus(s, 'hp');
+const pathPct = (s, k) => { const p = pathOf(s); return (p && p[k]) || 0; };   // процентная прибавка пути героя (см. PATHS в data.js)
+const maxHp = (s) => Math.round((bareStat(s, 'hp') + equipped(s).reduce((a, i) => a + (i.bonus?.hp || 0), 0) + setBonus(s, 'hp') + titleBonus(s, 'hp')) * (1 + (pathPct(s, 'hp') + setBonus(s, 'hpPct')) / 100));
 const maxStam = (s) => (s.base.stamina || 50) + equipped(s).reduce((a, i) => a + (i.bonus?.stamina || 0), 0);
 
 // ---- Выносливость и здоровье: восстановление считается по времени (now — мс), в том числе пока игра закрыта ----
@@ -104,9 +114,10 @@ const RANK_F = { D: 1 / 2, C: 2 / 3, B: 5 / 6, A: 1 };   // доля харак�
 const petName = (p) => `${ENEMIES[p.species].name} [${p.rank}]`;
 // Сила питомца = доля ранга от характеристик его вида ДЛЯ УРОВНЯ ГЕРОЯ lvl (питомцы растут вместе с автолевелингом монстров:
 // питомец ранга D на 6 уровне ровно вдвое слабее монстра своего вида 6 уровня).
-function petStats(p, lvl) {
-  const m = enemyFor(p.species, lvl), f = RANK_F[p.rank];
-  return { hp: Math.max(1, Math.round(m.hp * f)), dmg: Math.max(1, Math.round(m.dmg * f)), def: Math.round(m.def * f), crit: m.crit * f, dodge: m.dodge * f };
+const petBonusPct = (s) => (pathOf(s) && pathOf(s).pet) ? Math.min(pathOf(s).petMax, Math.round(pathOf(s).petBase + bareStat(s, 'int'))) + equipped(s).reduce((a, i) => a + (i.bonus?.pet || 0), 0) + setBonus(s, 'pet') : 0;   // Укротитель: питомец сильнее (путь, вещи, комплект)
+function petStats(p, lvl, bonus = 0) {
+  const m = enemyFor(p.species, lvl), f = RANK_F[p.rank], k = 1 + bonus / 100;
+  return { hp: Math.max(1, Math.round(m.hp * f * k)), dmg: Math.max(1, Math.round((m.petDmg != null ? m.petDmg : m.dmg) * f * k)), def: Math.round(m.def * f), crit: m.crit * f, dodge: m.dodge * f };
 }
 const curPet = (s) => (s.pets || []).find((p) => p.id === s.pet);
 function addPet(s, species, rank = 'D') {
@@ -116,7 +127,7 @@ function addPet(s, species, rank = 'D') {
 const trapNeed = (n) => 10 * Math.pow(2, n);          // поимок до следующего уровня ловца: 10, 20, 40…
 const trapper = (s) => s.trapper || (s.trapper = { lvl: 0, prog: 0 });
 function captureChance(s, e) {
-  const cage = ITEMS[s.equip.cage]; if (!cage || !cage.capture) return null;
+  const cage = cageOf(s); if (!cage || !cage.capture) return null;
   const lv = e.baseLevel || e.level;   // шанс поимки считается по базовому уровню вида (автолевелинг не закрывает поимку крыс и троллей-детёнышей)
   const row = cage.capture.base.find((r) => lv >= r.from && lv <= r.to); if (!row) return 0;
   let c = row.chance;
@@ -136,7 +147,8 @@ function enemyFor(id, lvl) {
   const L = Math.min(lvl, LEVEL_CAP_SCALING), row = (SCALING[id] || {})[L];
   const d = L - b.level;
   const r = row || { hp: b.hp * Math.pow(1.5, d), dmg: b.dmg * Math.pow(1.5, d), def: b.def * Math.pow(1.5, d) };
-  return { ...b, ...r, level: lvl, baseLevel: b.level, rewardLevel: b.fixed ? b.level : lvl, xp: b.fixed ? b.xp : Math.round(b.xp * Math.pow(XP_GROWTH_MOB, lvl - b.level)) };
+  // pow (этап 2): с 5-го уровня монстр бьёт сильнее в pow раз, а питомец его вида берёт силу от dmg строки без множителя (иначе питомцы росли бы вместе с этим множителем)
+  return { ...b, ...r, dmg: r.dmg * (r.pow || 1), petDmg: r.dmg, level: lvl, baseLevel: b.level, rewardLevel: b.fixed ? b.level : lvl, xp: b.fixed ? b.xp : Math.round(b.xp * Math.pow(XP_GROWTH_MOB, lvl - b.level)) };
 }
 const rewardLvl = (e) => e.rewardLevel != null ? e.rewardLevel : e.level;   // уровень, от которого считаются награды монстра
 const healAmount = (s, id) => Math.round(maxHp(s) * ITEMS[id].use.healPct / 100);
@@ -164,17 +176,17 @@ const ld = (s) => `<span class="ld">${s}</span>`;   // служебные стр
 const buffPct = (s, now) => (s.buff && s.buff.until > now ? s.buff.pct : 0);
 // Снимок героя для боя (на сервере воспроизведение идёт только по нему): всё, что влияет на бой. Бонус еды фиксируется на начало боя.
 function heroSnap(s, now) {
-  return JSON.parse(JSON.stringify({ lvl: s.lvl, base: s.base, equip: s.equip, hp: s.hp, trapper: trapper(s), pets: s.pets || [], pet: s.pet, inv: Object.fromEntries(Object.keys(ITEMS).filter((id) => ITEMS[id].aux).map((id) => [id, (s.inv && s.inv[id]) || 0])), flags: {}, buffPct: buffPct(s, now || 0), tb: { hp: titleBonus(s, 'hp'), capture: titleBonus(s, 'capture'), dmgPct: titleBonus(s, 'dmgPct') } }));
+  return JSON.parse(JSON.stringify({ lvl: s.lvl, base: s.base, equip: s.equip, hp: s.hp, trapper: trapper(s), pets: s.pets || [], pet: s.pet, inv: Object.fromEntries(Object.keys(ITEMS).filter((id) => ITEMS[id].aux).map((id) => [id, (s.inv && s.inv[id]) || 0])), flags: {}, path: s.path || null, buffPct: buffPct(s, now || 0), tb: { hp: titleBonus(s, 'hp'), capture: titleBonus(s, 'capture'), dmgPct: titleBonus(s, 'dmgPct') } }));
 }
 
 // Новый бой: состояние боя целиком сериализуемо (без ссылок на экран).
 // opts: {queue: [id…] — враги, ждущие своей очереди (бьёт всегда первый живой), mode: 'escort' — задание сопровождения, noCapture — клеть выключена}
 function newCombat(s, id, opts = {}) {
   const e = enemyFor(id, s.lvl);
-  const pp = curPet(s), pet = pp && !pp.dead ? { pid: pp.id, species: pp.species, rank: pp.rank, ...petStats(pp, s.lvl) } : null;
+  const pp = curPet(s), pet = pp && !pp.dead ? { pid: pp.id, species: pp.species, rank: pp.rank, ...petStats(pp, s.lvl, petBonusPct(s)) } : null;
   if (pet) pet.cur = pet.hp;
   const queue = (opts.queue || []).slice();
-  return { id, lvl: s.lvl, buff: s.buffPct != null ? s.buffPct : buffPct(s, opts.now || 0), dmgPct: titleBonus(s, 'dmgPct'), e: { ...e, cur: e.hp }, pet, round: 0, captureUsed: false, petRetreat: false, over: null, queue, total: 1 + queue.length, kills: [], aux: auxList(s), usedPotions: 0, usedIds: [], mode: opts.mode || null, noCapture: !!opts.noCapture || !!e.boss || (e.cageTier || 1) > ((s.equip && ITEMS[s.equip.cage] && ITEMS[s.equip.cage].tier) || 0),   // босса и монстра, которого клеть не удержит, поймать нельзя
+  return { id, lvl: s.lvl, buff: s.buffPct != null ? s.buffPct : buffPct(s, opts.now || 0), dmgPct: titleBonus(s, 'dmgPct'), share: Math.min(0.9, 0.5 + setBonus(s, 'share') / 100), pDmg: 1 + (pathPct(s, 'dmg') + setBonus(s, 'dmgPct')) / 100, pTaken: 1 + (pathPct(s, 'taken') + setBonus(s, 'taken')) / 100, critMul: (pathOf(s) && pathOf(s).critMul) || 1.5, e: { ...e, cur: e.hp }, pet, round: 0, captureUsed: false, petRetreat: false, over: null, queue, total: 1 + queue.length, kills: [], aux: auxList(s), usedPotions: 0, usedIds: [], mode: opts.mode || null, noCapture: !!opts.noCapture || (!!e.boss && !(cageOf(s) && cageOf(s).bossOk)) || (e.cageTier || 1) > ((cageOf(s) && cageOf(s).tier) || 0),   // босса (кроме Прочной клети) и монстра, которого клеть не удержит, поймать нельзя
     log: [`Бой начался. Против вас — ${low(e.name)}${queue.length ? (queue.length === 1 ? ' (и ещё один ждёт своей очереди)' : ' (и ещё ' + queue.length + ' ждут своей очереди)') : ''}.`] };
 }
 
@@ -191,7 +203,7 @@ function enemyDown(C) {
 function combatRestore(C, h) {
   h.hp = maxHp(h);
   const pp = curPet(h);
-  if (pp) { pp.dead = false; const st = petStats(pp, h.lvl); C.pet = { pid: pp.id, species: pp.species, rank: pp.rank, ...st, cur: st.hp }; C.petRetreat = false; }
+  if (pp) { pp.dead = false; const st = petStats(pp, h.lvl, petBonusPct(h)); C.pet = { pid: pp.id, species: pp.species, rank: pp.rank, ...st, cur: st.hp }; C.petRetreat = false; }
 }
 
 // Один раунд боя. C — бой, h — герой (s на телефоне, снимок на сервере), ch — выбор игрока, R — генератор.
@@ -224,8 +236,8 @@ function combatRound(C, h, ch, R) {
   else if (ed === za) C.log.push(`Вы бьёте в ${Z[za].acc}, но ${low(e.name)} закрывается.`);
   else if (rngInt(R, 1, 100) <= e.dodge) C.log.push(`Вы бьёте в ${Z[za].acc}, но ${low(e.name)} уворачивается.`);
   else {
-    let d = (total(h, 'str') + total(h, 'dmg')) * bm * (1 + (C.dmgPct || 0) / 100) + rngInt(R, 0, 2) - e.def, cr = '';   // dmgPct — титул «Крысобой»
-    if (rngInt(R, 1, 100) <= Math.min(60, (total(h, 'agi') + total(h, 'crit')) * bm)) { d = d * 1.5; cr = ' <b>Крит!</b>'; }
+    let d = (total(h, 'str') + total(h, 'dmg')) * bm * (1 + (C.dmgPct || 0) / 100) * (C.pDmg || 1) + rngInt(R, 0, 2) - e.def, cr = '';   // dmgPct — титул «Крысобой»
+    if (rngInt(R, 1, 100) <= Math.min(60, (total(h, 'agi') + total(h, 'crit')) * bm)) { d = d * (C.critMul || 1.5); cr = ' <b>Крит!</b>'; }
     d = Math.max(1, Math.round(d)); e.cur -= d;
     C.log.push(`Вы бьёте в ${Z[za].acc}: <span class="good">−${d}</span>${cr}`);
   }
@@ -248,18 +260,18 @@ function combatRound(C, h, ch, R) {
   // 3. противник: урон делится пополам между героем и питомцем (до блока и уклонения)
   let D = e.dmg + rngInt(R, -1, 2), cr = '';
   if (rngInt(R, 1, 100) <= e.crit) { D = D * 1.5; cr = ' <b>Крит!</b>'; }
-  const share = pet ? 0.5 : 1;
+  const share = pet ? (C.share || 0.5) : 1;   // доля удара, которую принимает герой (у Щита больше: он прикрывает питомца)
   if (zd === ea) C.log.push(`${e.name} бьёт в ${Z[ea].acc}, но вы успеваете закрыться.`);
   else if (rngInt(R, 1, 100) <= Math.min(40, (total(h, 'agi') + total(h, 'dodge')) * bm)) C.log.push(`${e.name} бьёт в ${Z[ea].acc}, но вы уворачиваетесь.`);
   else {
-    const d = Math.max(1, Math.round(D * share - total(h, 'def') * bm)); h.hp -= d;
+    const d = Math.max(1, Math.round(D * share * (C.pTaken || 1) - total(h, 'def') * bm)); h.hp -= d;
     C.log.push(`${e.name} бьёт в ${Z[ea].acc}: <span class="bad">−${d}</span>${cr}`);
   }
   if (pet) {
     if (pb === ea) C.log.push(pc('Питомец закрывается от удара.'));
     else if (rngInt(R, 1, 100) <= pet.dodge) C.log.push(pc('Питомец уворачивается.'));
     else {
-      const d = Math.max(1, Math.round(D * 0.5) - pet.def); pet.cur -= d;
+      const d = Math.max(1, Math.round(D * (1 - (C.share || 0.5))) - pet.def); pet.cur -= d;
       C.log.push(pc(`Удар по питомцу: −${d}`));
       if (pet.cur <= 0) {
         const pp = (h.pets || []).find((p) => p.id === pet.pid); if (pp) pp.dead = true;
@@ -296,6 +308,7 @@ function applyOutcome(s, h, C, outcome, R, now = Date.now()) {
   if (outcome === 'lose') { s.losses = (s.losses || 0) + 1; s.hp = 1; s.hpAt = now; s.hpFrac = 0; if (escort) s.daily.escortSt = 'failed'; return res; }
   s.wins = (s.wins || 0) + 1;   // победа (в т.ч. поимка) — один раз за бой; бои с людьми — позже
   const kills = outcome === 'capture' ? [C.id] : (C.kills.length ? C.kills : [C.id]);
+  if (outcome === 'win' && kills.includes('rat_king') && (C.lvl || h.lvl) >= 5) { s.flags = s.flags || {}; if (!s.flags.king5) s.flags.king5 = 1; }   // первая победа над королём на 5-м уровне: рыцарь наградит
   if (outcome === 'capture') s.captures = (s.captures || 0) + 1;   // счётчики для титулов: поимки и победы по видам
   else { s.kills = s.kills || {}; kills.forEach((id) => { s.kills[id] = (s.kills[id] || 0) + 1; }); }
   let coinsN = 0, xp = 0, fxMin = 1; const items = [];

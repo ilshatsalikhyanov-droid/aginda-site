@@ -23,3 +23,20 @@ const RECIPES = {
     recipe:{ tier:'простой', chance:100, ingredients:{ rat_hide:3 }, result:'cloak_rat_poor' },
   },
 };
+
+// Рецепты вещей путей (этап 2): шлем, перчатки, штаны и сапоги каждого пути. Простые (шанс 100%, одноразовые), у ремесленницы по 25 бронзовых; видны только своему пути.
+(() => {
+  const mats = {
+    helmet: { rat_king_tail:1, rat_hide:1 },
+    gloves: { troll_tooth_adult:1, rat_hide:1 },
+    pants:  { rat_hide:2, rat_pelt:1 },
+    boots:  { rat_king_tail:1, troll_tooth_adult:1 },
+  };
+  SET_ITEMS.filter(([, price]) => !price).forEach(([id, , slot, path]) => {
+    RECIPES['recipe_' + id] = {
+      name:'Рецепт: ' + EQUIPMENT[id].name, icon:'📜', img:'pictures/equipment/simple-recipe.jpg', path,
+      desc:'Простой рецепт. Срабатывает всегда, одноразовый.',
+      recipe:{ tier:'простой', chance:100, ingredients:{ ...mats[slot] }, result:id }, price:25,
+    };
+  });
+})();

@@ -314,13 +314,18 @@ function go(id,msg=[]){
   $screen.scrollTop=0;
 }
 
-const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум'};
-const bonusText=b=>Object.entries(b).filter(([,v])=>v).map(([k,v])=>`${v>0?'+':''}${v}${k==='crit'||k==='dodge'?'%':''} ${STAT_LABEL[k]}`).join(', ');
+const STAT_LABEL={dmg:'Урон',def:'Защита',crit:'Шанс крита',dodge:'Уклонение',hp:'Здоровье',stamina:'Выносливость',luck:'Удача',str:'Сила',agi:'Ловкость',int:'Разум',pet:'Сила питомца',taken:'Получаемый урон',dmgPct:'Урон',hpPct:'Здоровье',share:'Удара на себя вместо питомца'};
+const PCT_STATS=['crit','dodge','pet','taken','dmgPct','hpPct','share'];
+const bonusText=b=>Object.entries(b).filter(([,v])=>v).map(([k,v])=>`${v>0?'+':''}${v}${PCT_STATS.includes(k)?'%':''} ${STAT_LABEL[k]}`).join(', ');
 
 // ---- Подсказка с характеристиками: наведение мышью или долгое нажатие на телефоне ----
 const fmtNum=n=>String(Math.round(n*10)/10);
+function setTip(it){   // комплект: сколько вещей надето и какие бонусы за 2, 4, 7
+  const st=SETS[it.set],n=setCount(S,it.set);
+  return `<div class="ts">${st.name} (${n}/7)</div>`+Object.keys(st.bonus).map(th=>`<div><span class="${n>=+th?'pos':'neg'}">${th} ${plural(+th,'вещь','вещи','вещей')}</span><b class="${n>=+th?'pos':'neg'}">${bonusText(st.bonus[th])}</b></div>`).join('');
+}
 function tipItem(it,slotLabel){
-  const lines=Object.entries(it.bonus||{}).filter(([,v])=>v).map(([k,v])=>`<div><span>${STAT_LABEL[k]}</span><b class="${v>0?'pos':'neg'}">${v>0?'+':''}${v}${k==='crit'||k==='dodge'?'%':''}</b></div>`).join('');
+  const lines=Object.entries(it.bonus||{}).filter(([,v])=>v).map(([k,v])=>`<div><span>${STAT_LABEL[k]}</span><b class="${v>0?'pos':'neg'}">${v>0?'+':''}${v}${PCT_STATS.includes(k)?'%':''}</b></div>`).join('');
   const cap=it.capture?it.capture.base.map(r=>`<div><span>Шанс поимки (${r.from}–${r.to} ур.)</span><b>${r.chance}%</b></div>`).join(''):'';
   const ck=it.cook?`<div class="ts">Рецепт блюда</div>`+Object.entries(it.cook.ingredients).map(([k,n])=>`<div><span>${ITEMS[k].name}</span><b>×${n}</b></div>`).join('')+`<div><span>Шанс</span><b>${it.cook.chance}%</b></div><div><span>Готовит</span><b>${ITEMS[it.cook.result].name}</b></div>`:'';
   const fd=it.food?`<div><span>Урон, защита, крит, уклонение</span><b class="pos">+${it.food.pct}%</b></div><div><span>Действует</span><b>${it.food.min} мин</b></div>`:'';
@@ -328,10 +333,10 @@ function tipItem(it,slotLabel){
   const big=it.img?`<img class="tipimg" src="${pic(it.img)}" alt="">`:'';   // в подсказке картинка крупнее, чем в списках
   return `${big}<div class="tn">${it.img?'':iic(it)+' '}${it.name}${it.junk?' <span class="tag">хлам</span>':''}${it.material?' <span class="tag">материал</span>':''}</div>
     ${slotLabel?`<div class="ts">${slotLabel}</div>`:''}${it.cook?ck:it.food?fd:it.recipe?rec:(lines||(it.use?`<div><span>Лечит</span><b class="pos">${it.use.healPct}% здоровья</b></div>`:cap||it.material||it.junk||it.currency?'':'<div class="ts">Без бонусов</div>'))}${cap}
-    ${it.minLvl?`<div><span>Уровень</span><b>${it.minLvl}</b></div>`:''}${it.sell?`<div><span>Цена продажи</span><b>${it.sell} ${coinIcon()}</b></div>`:''}${it.desc?`<div class="ts">${it.desc}</div>`:''}`;
+    ${it.set&&SETS[it.set]?setTip(it):''}${it.path?`<div><span>Путь</span><b>${PATHS[it.path].short}</b></div>${it.path!==S.path?'<div class="ts"><span class="neg">Не действует: вещь другого пути</span></div>':''}`:''}${it.minLvl?`<div><span>Уровень</span><b>${it.minLvl}</b></div>`:''}${it.sell?`<div><span>Цена продажи</span><b>${it.sell} ${coinIcon()}</b></div>`:''}${it.desc?`<div class="ts">${it.desc}</div>`:''}`;
 }
 function tipPet(p){
-  const m=ENEMIES[p.species],st=petStats(p,S.lvl);
+  const m=ENEMIES[p.species],st=petStats(p,S.lvl,petBonusPct(S));
   return `<div class="tn">${m.icon} ${petName(p)}</div>
     <div class="ts">${p.dead?'Погиб':'Ранг '+p.rank+' · '+Math.round(RANK_F[p.rank]*100)+'% от монстра вашего уровня'}</div>
     <div><span>Здоровье</span><b>${st.hp}</b></div><div><span>Урон</span><b>${st.dmg}</b></div><div><span>Защита</span><b>${st.def}</b></div>
@@ -455,7 +460,7 @@ function craftScreen(sc,note=''){
   if(sc.image)page.append(mk('scene-img',`<img src="${pic(sc.image)}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
   if(note)body.append(mk('log',note));
   page.append(body);
-  const act=mk('actions'),ids=Object.keys(S.inv).filter(id=>ITEMS[id]?.recipe&&S.inv[id]>0);
+  const act=mk('actions'),ids=Object.keys(S.inv).filter(id=>ITEMS[id]?.recipe&&S.inv[id]>0&&(!ITEMS[id].path||ITEMS[id].path===S.path));
   if(!ids.length)act.append(mk('dim','Рецептов нет: ремесленнице нечего мастерить.'));
   ids.forEach(id=>{
     const it=ITEMS[id],r=it.recipe,res=ITEMS[r.result],can=canCraft(S,r);
@@ -497,6 +502,11 @@ function questTasks(s){
     {k:'lvl3',t:'Достичь 3-го уровня.',short:'Достичь 3-го уровня',d:s.lvl>=3,show:!!f.gear},
     {k:'m3',t:'Вернуться к мастеру-наставнику (3-й уровень).',short:'Вернуться к наставнику',d:!!f.m3,show:s.lvl>=3&&!!f.gear},
     {k:'knight',t:'Подойти к Рыцарю внутреннего двора в Гильдии искателей.',short:'Подойти к Рыцарю',d:!!f.knight_met,show:!!f.m3},
+    {k:'lvl4',t:'Достичь 4-го уровня.',short:'Достичь 4-го уровня',d:s.lvl>=4,show:!!f.knight_met},
+    {k:'path_q',t:'Поговорить с Рыцарем о дальнейшем пути (4-й уровень).',short:'К Рыцарю: путь',d:!!f.path_quest,show:s.lvl>=4&&!!f.knight_met},
+    {k:'path_ment',t:'Послушать наставников: старого солдата у повозки в Кривом переулке, наёмника в харчевне «Последний ужин» и инструктора ловцов.',short:'Послушать наставников',d:heardAll(s),show:!!f.path_quest,par:true},
+    {k:'path_pick',t:'Выбрать путь у Рыцаря: Щит, Меч или Укротитель Агинды.',short:'Выбрать путь',d:!!s.path,show:!!f.path_quest},
+    {k:'king5',t:'Победить Крысиного короля на 5-м уровне и рассказать об этом Рыцарю: он наградит на снаряжение.',short:'Рассказать Рыцарю о Короле',d:!!f.king5_paid,show:!!s.path&&s.lvl>=5},
   ].filter(x=>x.show!==false);
 }
 // Ежедневные задания (отдельная вкладка журнала). st: avail — можно взять, taken — взято, won — выполнено, осталось сдать, failed, done
@@ -581,7 +591,7 @@ const SLOT_POS={
   gloves:{side:'r',y:32}, weapon:{side:'r',y:51}, boots:{side:'r',y:90},
 };
 // Голые статы — белым, прибавка от экипировки — зелёным в скобках
-const eqSum=(s,stat)=>equipped(s).reduce((a,i)=>a+(i.bonus?.[stat]||0),0);
+const eqSum=(s,stat)=>equipped(s).reduce((a,i)=>a+(i.bonus?.[stat]||0),0)+setBonus(s,stat);
 const plusTxt=(n,suf='')=>n?` <i class="plus">(${n>0?'+':''}${n}${suf})</i>`:'';
 const statRow=(k,v)=>`<div><span>${k}</span><b>${v}</b></div>`;
 
@@ -644,9 +654,9 @@ function characterScreen(back){
   const dmgB=eqSum(S,'dmg')+eqSum(S,'str'),critB=eqSum(S,'crit')+eqSum(S,'agi'),dodB=eqSum(S,'dodge')+eqSum(S,'agi');
   const abil=['str','agi','int'].map(k=>bareStat(S,k)+plusTxt(eqSum(S,k))).join(' / ');
   const stats=mk('cstats',`
-      ${statRow('Уровень',S.lvl)}
+      ${statRow('Уровень',S.lvl+(pathOf(S)?' · '+pathOf(S).short:''))}
       ${statRow('Опыт',S.xp+'/'+xpNeed(S))}
-      ${statRow('Здоровье',S.hp+'/'+hpBare+plusTxt(eqSum(S,'hp')+titleBonus(S,'hp')))}
+      ${statRow('Здоровье',pathOf(S)?S.hp+'/'+maxHp(S):S.hp+'/'+hpBare+plusTxt(eqSum(S,'hp')+titleBonus(S,'hp')))}
       ${statRow('Выносл.',stam(S)+'/'+stBare+plusTxt(eqSum(S,'stamina')))}
       ${statRow('Урон',bareStat(S,'str')+plusTxt(dmgB))}
       ${statRow('Защита',bareStat(S,'def')+plusTxt(eqSum(S,'def')))}
@@ -821,7 +831,7 @@ function shopScreen(sc){
     if(sc.image)$screen.append(mk('scene-img',`<img src="${pic(sc.image)}" alt=""${sc.zoom?' data-zoom':''}${sc.imagePos?` style="object-position:${sc.imagePos}"`:''}>`));
     if(sc.text)$screen.append(el(`<div class="text"><p>${sc.text}</p></div>`));
     if(note)$screen.append(el(`<div class="log">${note}</div>`));
-    sc.stock.forEach(id=>{
+    sc.stock.filter(id=>!ITEMS[id].path||ITEMS[id].path===S.path).forEach(id=>{   // вещи и рецепты чужого пути не показываются
       const it=ITEMS[id],have=S.inv[id]||0,owned=!it.use&&!it.stack&&have>=(it.maxOwn||1),price=itemPrice(it,S);
       const b=btn(`${iic(it)} ${it.name} — ${price} ${coinIcon()}${it.stack?(have?` (в сумке ${have})`:''):!it.use&&have?` (куплено${it.maxOwn>1?' '+have+'/'+it.maxOwn:''})`:''}`,()=>{
         const r=doOp({op:'buy',id});
@@ -902,7 +912,7 @@ function chatRender(st){
   if(!st.msgs.size)l.append(mk('chat-empty','Пока тихо. Напишите первым.'));
   [...st.msgs.values()].sort((a,b)=>a.id-b.id).forEach(m=>{
     const row=mk('cm'+(m.nick===st.me?' me':'')),n=document.createElement('button');
-    n.type='button';n.className='cn';n.textContent=m.lvl?`${m.nick} [${m.lvl}]`:m.nick;n.onclick=()=>chatProfile(st,m.nick);   // в чате только имя и уровень
+    n.type='button';n.className='cn';n.textContent=m.lvl?`${m.nick} [${m.lvl}${PATHS[m.path]?' · '+PATHS[m.path].short:''}]`:m.nick;n.onclick=()=>chatProfile(st,m.nick);   // в чате только имя и уровень
     const t=document.createElement('span');t.className='ct';t.textContent=chatClock(m.t);
     const x=document.createElement('span');x.className='cx';x.textContent=m.text;
     row.append(t,n,x);
@@ -973,8 +983,8 @@ function profileScreen(p,onBack){
   Object.entries(SLOT_POS).forEach(([k,pos])=>{const b=slotButton(k,null,view);b.style[pos.side==='l'?'left':'right']='0';b.style.top=pos.y+'%';paper.append(b);});
   const left=mk('pcol');left.append(paper);
   const row=(k,v)=>`<div><span>${k}</span><b></b></div>`;
-  const stats=mk('cstats',row('Уровень')+row('Победы')+row('Поражения')+row('Титул')+row('Клан'));
-  const vals=[p.lvl,p.wins,p.losses,p.title||'—',p.clan||'—'];
+  const stats=mk('cstats',row('Уровень')+row('Путь')+row('Победы')+row('Поражения')+row('Титул')+row('Клан'));
+  const vals=[p.lvl,PATHS[p.path]?PATHS[p.path].name:'—',p.wins,p.losses,p.title||'—',p.clan||'—'];
   stats.querySelectorAll('b').forEach((b,i)=>{b.textContent=vals[i];});
   const wrap=mk('char-wrap');wrap.append(left,stats);page.append(wrap);
   const jr=mk('jrow');['necklace','ring1','ring2','earring1','earring2','cage'].forEach(k=>jr.append(slotButton(k,null,view)));page.append(jr);
